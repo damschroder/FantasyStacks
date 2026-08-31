@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantasystacks.dev/schema/player-games.schema.json",
+  "title": "FantasyStacks player games",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "data"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gameId", "playerId", "team", "opponent", "season", "week", "position", "played", "offensiveSnaps", "targets", "receptions", "receivingYards", "receivingTouchdowns", "fantasyPointsPpr"],
+        "properties": {
+          "gameId": { "type": "string" },
+          "playerId": { "type": "string" },
+          "team": { "type": "string" },
+          "opponent": { "type": "string" },
+          "season": { "type": "integer" },
+          "week": { "type": "integer", "minimum": 1, "maximum": 22 },
+          "position": { "enum": ["WR", "TE"] },
+          "played": { "type": "boolean" },
+          "offensiveSnaps": { "type": ["integer", "null"], "minimum": 0 },
+          "targets": { "type": "integer", "minimum": 0 },
+          "receptions": { "type": "integer", "minimum": 0 },
+          "receivingYards": { "type": "integer" },
+          "receivingTouchdowns": { "type": "integer", "minimum": 0 },
+          "fantasyPointsPpr": { "type": "number" }
+        }
+      }
+    }
+  }
+}

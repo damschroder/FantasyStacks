@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantasystacks.dev/schema/players.schema.json",
+  "title": "FantasyStacks players",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "data"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["playerId", "name", "position", "latestTeam", "headshotUrl", "sourceIds"],
+        "properties": {
+          "playerId": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "position": { "enum": ["WR", "TE"] },
+          "latestTeam": { "type": ["string", "null"] },
+          "headshotUrl": { "type": ["string", "null"] },
+          "sourceIds": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["gsis", "pfr"],
+            "properties": { "gsis": { "type": "string" }, "pfr": { "type": ["string", "null"] } }
+          }
+        }
+      }
+    }
+  }
+}

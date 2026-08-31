@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantasystacks.dev/schema/manifest.schema.json",
+  "title": "FantasyStacks manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "season", "provider", "files", "definitions"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "season": { "type": "integer", "minimum": 1999 },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "license", "sourceUrls"],
+      "properties": {
+        "name": { "const": "nflverse" },
+        "license": { "type": "string" },
+        "sourceUrls": { "type": "array", "items": { "type": "string", "format": "uri" }, "minItems": 1 }
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["players", "playerGames", "teamGames"],
+      "properties": {
+        "players": { "$ref": "#/$defs/file" },
+        "playerGames": { "$ref": "#/$defs/file" },
+        "teamGames": { "$ref": "#/$defs/file" }
+      }
+    },
+    "definitions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offensivePossessions", "offensivePlays", "nullSemantics"],
+      "properties": {
+        "offensivePossessions": { "type": "string" },
+        "offensivePlays": { "type": "string" },
+        "nullSemantics": { "const": "null means unknown or unavailable; 0 means a verified zero" }
+      }
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "records", "sha256"],
+      "properties": {
+        "path": { "type": "string" },
+        "records": { "type": "integer", "minimum": 0 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  }
+}
