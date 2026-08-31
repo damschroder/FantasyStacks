@@ -77,7 +77,23 @@ export function parseDataset(
 }
 
 export type WindowKey = 'week18' | 'last3' | 'last5' | 'season';
-export type SortKey = 'ppr' | 'targets' | 'yards' | 'touchdowns' | 'stackScore';
+export type SortKey =
+  | 'ppr'
+  | 'stackScore'
+  | 'possessions'
+  | 'teamPlays'
+  | 'snaps'
+  | 'targets'
+  | 'receptions'
+  | 'yards'
+  | 'touchdowns'
+  | 'possessionPerGame'
+  | 'playsPerPossession'
+  | 'snapShare'
+  | 'targetsPerSnap'
+  | 'catchRate'
+  | 'yardsPerCatch'
+  | 'touchdownsPerCatch';
 
 export interface Profile {
   playerId: string;
@@ -183,12 +199,27 @@ export function aggregateProfiles(
 
   const selectors: Record<SortKey, (profile: Profile) => number> = {
     ppr: (profile) => profile.ppr,
+    stackScore: (profile) => profile.stackScore,
+    possessions: (profile) => profile.possessions,
+    teamPlays: (profile) => profile.teamPlays,
+    snaps: (profile) => profile.snaps,
     targets: (profile) => profile.targets,
+    receptions: (profile) => profile.receptions,
     yards: (profile) => profile.yards,
     touchdowns: (profile) => profile.touchdowns,
-    stackScore: (profile) => profile.stackScore,
+    possessionPerGame: (profile) => profile.possessionPerGame,
+    playsPerPossession: (profile) => profile.playsPerPossession,
+    snapShare: (profile) => profile.snapShare,
+    targetsPerSnap: (profile) => profile.targetsPerSnap,
+    catchRate: (profile) => profile.catchRate,
+    yardsPerCatch: (profile) => profile.yardsPerCatch,
+    touchdownsPerCatch: (profile) => profile.touchdownsPerCatch,
   };
-  return profiles.sort((a, b) => selectors[sortKey](b) - selectors[sortKey](a) || b.targets - a.targets);
+  return profiles.sort((a, b) =>
+    selectors[sortKey](b) - selectors[sortKey](a)
+    || b.ppr - a.ppr
+    || b.targets - a.targets
+    || a.name.localeCompare(b.name));
 }
 
 export const TEAM_COLORS: Record<string, string> = {

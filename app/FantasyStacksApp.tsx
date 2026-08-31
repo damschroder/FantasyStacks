@@ -15,8 +15,28 @@ const WINDOW_LABELS: Record<WindowKey, string> = {
   week18: 'Week 18', last3: 'Last 3', last5: 'Last 5', season: 'Full season',
 };
 const SORT_LABELS: Record<SortKey, string> = {
-  ppr: 'PPR points', targets: 'Targets', yards: 'Rec. yards', touchdowns: 'Touchdowns', stackScore: 'Stack score',
+  ppr: 'PPR points',
+  stackScore: 'Stack score',
+  possessions: 'Team possessions',
+  teamPlays: 'Team plays',
+  snaps: 'Offensive snaps',
+  targets: 'Targets',
+  receptions: 'Catches',
+  yards: 'Receiving yards',
+  touchdowns: 'Receiving TDs',
+  possessionPerGame: 'Possessions / game',
+  playsPerPossession: 'Plays / possession',
+  snapShare: 'Snap share',
+  targetsPerSnap: 'Targets / snap',
+  catchRate: 'Catch rate',
+  yardsPerCatch: 'Yards / catch',
+  touchdownsPerCatch: 'TDs / catch',
 };
+const SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
+  { label: 'Overview', keys: ['ppr', 'stackScore'] },
+  { label: 'Stack layers · volume', keys: ['possessions', 'teamPlays', 'snaps', 'targets', 'receptions', 'yards', 'touchdowns'] },
+  { label: 'Transitions · efficiency', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch'] },
+];
 
 const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -173,7 +193,15 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
 
       <section className="results-head">
         <p>PRODUCTION PROFILES · {WINDOW_LABELS[windowKey].toUpperCase()}</p>
-        <label className="sort-label">SORT <select value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>{(Object.keys(SORT_LABELS) as SortKey[]).map((key) => <option value={key} key={key}>{SORT_LABELS[key]}</option>)}</select></label>
+        <label className="sort-label">SORT
+          <select value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(9); }}>
+            {SORT_GROUPS.map((group) => (
+              <optgroup label={group.label} key={group.label}>
+                {group.keys.map((key) => <option value={key} key={key}>{SORT_LABELS[key]}</option>)}
+              </optgroup>
+            ))}
+          </select>
+        </label>
       </section>
 
       {displayProfiles.length ? (
