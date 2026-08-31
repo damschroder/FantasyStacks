@@ -185,6 +185,7 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
   const [sortKey, setSortKey] = useState<SortKey>('ppr');
   const [pinned, setPinned] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
+  const [density, setDensity] = useState(3);
   const [shown, setShown] = useState(9);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -206,7 +207,7 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
   const changeWindow = (next: WindowKey) => {
     setWindowKey(next);
     setMinGames(next === 'season' ? 6 : next === 'last5' ? 3 : next === 'last3' ? 2 : 1);
-    setShown(9);
+    setShown(density * 3);
   };
   const changePosition = (next: PositionFilter) => {
     setPosition(next);
@@ -214,7 +215,7 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
     setSortKey('ppr');
     setPinned([]);
     setCompareMode(false);
-    setShown(9);
+    setShown(density * 3);
   };
   const togglePin = (playerId: string) => {
     const next = pinned.includes(playerId)
@@ -276,7 +277,7 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
           <div><span>COMPARISON SET</span><strong>{pinned.length} selected</strong></div>
           <div className="compare-names">{pinned.map((id) => dataset.players.find((player) => player.playerId === id)?.name).filter(Boolean).map((name) => <span key={name}>{name}</span>)}</div>
           <div className="compare-actions">
-            <button className="compare-button" onClick={() => { setCompareMode((current) => !current); setShown(Math.max(9, pinned.length)); }}>
+            <button className="compare-button" onClick={() => { setCompareMode((current) => !current); setShown(Math.max(density * 3, pinned.length)); }}>
               {compareMode ? 'Show all stacks' : `Compare ${pinned.length}`}
             </button>
             <button onClick={() => { setPinned([]); setCompareMode(false); }}>Clear</button>
@@ -286,25 +287,46 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
 
       <section className="results-head">
         <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey].toUpperCase()}`}</p>
-        <label className="sort-label">SORT
-          <select value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(9); }}>
-            {sortGroups.map((group) => (
-              <optgroup label={group.label} key={group.label}>
-                {group.keys.map((key) => <option value={key} key={key}>{SORT_LABELS[key]}</option>)}
-              </optgroup>
-            ))}
-          </select>
-        </label>
+        <div className="results-tools">
+          <label className="density-label" htmlFor="density">DENSITY
+            <span className="density-input">
+              <input
+                id="density"
+                type="range"
+                min="3"
+                max="10"
+                step="1"
+                value={density}
+                aria-valuetext={`${density} stacks per row`}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  setDensity(next);
+                  setShown(next * 3);
+                }}
+              />
+              <output htmlFor="density">{density} / ROW</output>
+            </span>
+          </label>
+          <label className="sort-label">SORT
+            <select value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(density * 3); }}>
+              {sortGroups.map((group) => (
+                <optgroup label={group.label} key={group.label}>
+                  {group.keys.map((key) => <option value={key} key={key}>{SORT_LABELS[key]}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+        </div>
       </section>
 
       {displayProfiles.length ? (
         <>
-          <section className="player-grid">
+          <section className="player-grid" data-density={density} style={{ '--density': density } as React.CSSProperties}>
             {visibleProfiles.map((profile) => (
               <PlayerStack key={profile.playerId} profile={profile} rank={profiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} onTogglePin={() => togglePin(profile.playerId)} />
             ))}
           </section>
-          {!compareMode && shown < displayProfiles.length && <button className="load-more" onClick={() => setShown((current) => current + 9)}>Show 9 more <span>↓</span></button>}
+          {!compareMode && shown < displayProfiles.length && <button className="load-more" onClick={() => setShown((current) => current + density * 3)}>Show 3 more rows <span>↓</span></button>}
         </>
       ) : (
         <section className="empty-state"><strong>{compareMode ? 'No selected stacks in this view.' : 'No qualified players.'}</strong><p>{compareMode ? 'Show all stacks or loosen the filters to restore the comparison.' : 'Loosen the minimum games or usage filter to widen the field.'}</p></section>
