@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
   basePath: githubPages ? '/FantasyStacks' : '',
   assetPrefix: githubPages ? '/FantasyStacks/' : undefined,
   trailingSlash: githubPages,
+  images: {
+    remotePatterns: [{ protocol: 'https', hostname: 'a.espncdn.com', pathname: '/i/teamlogos/nfl/**' }],
+  },
 };
 
 export default nextConfig;

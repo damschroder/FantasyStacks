@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Image from 'next/image';
 import {
   aggregateProfiles,
   Dataset,
@@ -8,6 +9,7 @@ import {
   Profile,
   SortKey,
   TEAM_COLORS,
+  TEAM_LOGOS,
   WindowKey,
 } from '@/lib/data-contract';
 
@@ -121,11 +123,21 @@ function PlayerStack({
   ];
   const layers = profile.position === 'RB' ? runningBackLayers : receiverLayers;
   const color = TEAM_COLORS[profile.team] ?? '#6e777a';
+  const logo = TEAM_LOGOS[profile.team];
   return (
     <article className={`player-card${pinned ? ' pinned' : ''}`} style={{ '--accent': color } as React.CSSProperties}>
       <div className="player-heading">
         <div>
-          <p className="player-meta">{profile.team} &nbsp;·&nbsp; {profile.position} &nbsp;·&nbsp; {profile.games} GAMES</p>
+          <p className="player-meta">
+            <span className="team-identity">
+              {logo && <Image className="team-logo" src={logo} alt="" width={28} height={28} loading="lazy" unoptimized />}
+              <strong>{profile.team}</strong>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>{profile.position}</span>
+            <span aria-hidden="true">·</span>
+            <span>{profile.games} GAMES</span>
+          </p>
           <h2>{profile.name}</h2>
           <p className="ppr-line"><strong>{decimal.format(profile.ppr)}</strong> PPR &nbsp; <span>{decimal.format(profile.ppr / profile.games)} / game</span></p>
           {profile.position === 'RB' && <p className="role-legend"><span className="rush-key">RUSH / TOUCH</span><span className="receive-key">TARGET / RECEIVE</span></p>}
