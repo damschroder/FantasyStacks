@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-08-31T20:15:06.048510Z",
+  "season": 2025,
+  "provider": {
+    "name": "nflverse",
+    "license": "CC BY 4.0; underlying NFL data remains subject to its owners' terms",
+    "sourceUrls": [
+      "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2025.parquet",
+      "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2025.parquet",
+      "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2025.parquet",
+      "https://github.com/nflverse/nflverse-data/releases/download/players/players.parquet"
+    ]
+  },
+  "files": {
+    "players": {
+      "path": "/data/v1/players.json",
+      "records": 370,
+      "sha256": "c39f4b5c0a7f06b6043bf601ba2a89ccd3d1105764e113fa1fb3516d01c15383"
+    },
+    "playerGames": {
+      "path": "/data/v1/player-games.json",
+      "records": 3644,
+      "sha256": "341140f3e77041d967871202425989be282300b02ffd3fb6b7092bb0f44f08ca"
+    },
+    "teamGames": {
+      "path": "/data/v1/team-games.json",
+      "records": 544,
+      "sha256": "df167a9484dca93b0662baa948396e313c0e25879ae58c4c18b8a7f5c3a82242"
+    }
+  },
+  "definitions": {
+    "offensivePossessions": "Distinct nflverse play-by-play drive identifiers with a recorded possession team.",
+    "offensivePlays": "Median team snap total reconstructed from player offense_snaps / offense_pct, rounded to a whole play.",
+    "nullSemantics": "null means unknown or unavailable; 0 means a verified zero"
+  }
+}
