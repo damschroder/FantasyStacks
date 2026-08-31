@@ -1,6 +1,6 @@
 {
-  "schemaVersion": "1.0.0",
-  "generatedAt": "2026-08-31T20:15:06.048510Z",
+  "schemaVersion": "1.1.0",
+  "generatedAt": "2026-08-31T22:45:12.830109Z",
   "season": 2025,
   "provider": {
     "name": "nflverse",
@@ -15,18 +15,18 @@
   "files": {
     "players": {
       "path": "/data/v1/players.json",
-      "records": 370,
-      "sha256": "c39f4b5c0a7f06b6043bf601ba2a89ccd3d1105764e113fa1fb3516d01c15383"
+      "records": 515,
+      "sha256": "105f7efa445b00b47d28eba8a27d3b7cbc4d047e3f5f7ed8f7ff138aa024637f"
     },
     "playerGames": {
       "path": "/data/v1/player-games.json",
-      "records": 3644,
-      "sha256": "341140f3e77041d967871202425989be282300b02ffd3fb6b7092bb0f44f08ca"
+      "records": 5093,
+      "sha256": "b1b85ee29be0c25caeb93b677b554534d6ff418cb38520578f4714579406c712"
     },
     "teamGames": {
       "path": "/data/v1/team-games.json",
       "records": 544,
-      "sha256": "df167a9484dca93b0662baa948396e313c0e25879ae58c4c18b8a7f5c3a82242"
+      "sha256": "e8ad7d9bc7d3faa46386c662a10d6a1e2d301f500c701588cb9049ad9af16ced"
     }
   },
   "definitions": {

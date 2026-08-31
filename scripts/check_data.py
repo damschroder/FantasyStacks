@@ -27,7 +27,10 @@ assert all(game["playerId"] in player_ids for game in player_games)
 assert all((game["gameId"], game["team"]) in team_context for game in player_games)
 assert all(game["receptions"] <= game["targets"] for game in player_games)
 assert all(game["receivingTouchdowns"] <= game["receptions"] for game in player_games)
-assert all(game["position"] in {"WR", "TE"} for game in player_games)
+assert all(game["position"] in {"WR", "TE", "RB"} for game in player_games)
+assert all(game["carries"] >= 0 for game in player_games)
+assert all(game["rushingTouchdowns"] <= game["carries"] for game in player_games)
+assert any(game["position"] == "RB" and game["carries"] > 0 for game in player_games)
 
 for key, descriptor in manifest["files"].items():
     path = DATA / Path(descriptor["path"]).name
@@ -37,10 +40,10 @@ qualified_season = {}
 for game in player_games:
     if not game["played"]:
         continue
-    aggregate = qualified_season.setdefault(game["playerId"], {"games": 0, "targets": 0})
+    aggregate = qualified_season.setdefault(game["playerId"], {"games": 0, "usage": 0, "position": game["position"]})
     aggregate["games"] += 1
-    aggregate["targets"] += game["targets"]
-qualified_count = sum(1 for value in qualified_season.values() if value["games"] >= 6 and value["targets"] / value["games"] >= 2)
+    aggregate["usage"] += game["targets"] + (game["carries"] if game["position"] == "RB" else 0)
+qualified_count = sum(1 for value in qualified_season.values() if value["games"] >= 6 and value["usage"] / value["games"] >= 2)
 assert qualified_count >= 50, f"unexpectedly small qualified cohort: {qualified_count}"
 
 print(f"Integrity checks passed for {len(players)} players and {len(player_games)} player-games; {qualified_count} qualify by default.")
