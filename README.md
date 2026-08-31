@@ -14,6 +14,8 @@ Receiver stacks have seven layers:
 
 Running-back stacks preserve the same team-context base, then show touches plus targets, catches, scrimmage yards, and total touchdowns. Rushing volume uses the team color; target and receiving volume use the contrasting highlight color.
 
+The FLEX view combines RB, WR, and TE stacks in one qualified field while preserving each position's stack grammar.
+
 Layer width is the player’s percentile for raw volume among the currently qualified cohort. Layer height is the percentile of the transition rate into that layer. Geometry is calculated after filtering; it is never stored in the source dataset.
 
 ## Run locally

@@ -1,5 +1,5 @@
 export type Position = 'WR' | 'TE' | 'RB';
-export type PositionFilter = 'RECEIVERS' | Position;
+export type PositionFilter = 'FLEX' | 'RECEIVERS' | Position;
 
 export interface Player {
   playerId: string;
@@ -178,7 +178,8 @@ export function aggregateProfiles(
 
   for (const game of dataset.playerGames) {
     if (!game.played || (allowedWeeks && !allowedWeeks.has(game.week))) continue;
-    if (position === 'RECEIVERS' ? game.position === 'RB' : game.position !== position) continue;
+    if (position === 'RECEIVERS' && game.position === 'RB') continue;
+    if (position !== 'FLEX' && position !== 'RECEIVERS' && game.position !== position) continue;
     if (team !== 'ALL' && game.team !== team) continue;
     const player = players.get(game.playerId);
     if (!player) continue;

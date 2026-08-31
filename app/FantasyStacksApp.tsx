@@ -51,6 +51,13 @@ const RB_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Stack layers · volume', keys: ['possessions', 'teamPlays', 'snaps', 'opportunities', 'carries', 'targets', 'receptions', 'yards', 'rushingYards', 'receivingYards', 'touchdowns', 'rushingTouchdowns', 'receivingTouchdowns'] },
   { label: 'Transitions · efficiency', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'opportunitiesPerSnap', 'catchRate', 'yardsPerTouch', 'touchdownsPerTouch'] },
 ];
+const FLEX_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
+  { label: 'Overview', keys: ['ppr', 'stackScore'] },
+  { label: 'Shared layers · volume', keys: ['possessions', 'teamPlays', 'snaps', 'targets', 'receptions', 'receivingYards', 'receivingTouchdowns'] },
+  { label: 'RB + composite layers', keys: ['opportunities', 'carries', 'yards', 'rushingYards', 'touchdowns', 'rushingTouchdowns'] },
+  { label: 'Shared transitions', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch'] },
+  { label: 'RB + composite transitions', keys: ['opportunitiesPerSnap', 'yardsPerTouch', 'touchdownsPerTouch'] },
+];
 
 const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -181,12 +188,20 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
   );
   const displayProfiles = compareMode ? comparisonProfiles : profiles;
   const visibleProfiles = compareMode ? displayProfiles : displayProfiles.slice(0, shown);
-  const sortGroups = position === 'RB' ? RB_SORT_GROUPS : RECEIVER_SORT_GROUPS;
-  const usageOptions = position === 'RB' ? [0, 2, 4, 6, 8, 10, 12, 15, 20] : [0, 1, 2, 3, 4, 5, 6];
+  const sortGroups = position === 'FLEX' ? FLEX_SORT_GROUPS : position === 'RB' ? RB_SORT_GROUPS : RECEIVER_SORT_GROUPS;
+  const usageOptions = position === 'RB' || position === 'FLEX' ? [0, 2, 4, 6, 8, 10, 12, 15, 20] : [0, 1, 2, 3, 4, 5, 6];
 
   const changeWindow = (next: WindowKey) => {
     setWindowKey(next);
     setMinGames(next === 'season' ? 6 : next === 'last5' ? 3 : next === 'last3' ? 2 : 1);
+    setShown(9);
+  };
+  const changePosition = (next: PositionFilter) => {
+    setPosition(next);
+    setMinTargets(2);
+    setSortKey('ppr');
+    setPinned([]);
+    setCompareMode(false);
     setShown(9);
   };
   const togglePin = (playerId: string) => {
@@ -222,8 +237,8 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
         <div className="control-group position-group">
           <span className="control-label">POSITION</span>
           <div className="segmented compact">
-            {(['RECEIVERS', 'WR', 'TE', 'RB'] as const).map((value) => (
-              <button key={value} className={position === value ? 'active' : ''} onClick={() => { setPosition(value); setSortKey('ppr'); setPinned([]); setCompareMode(false); setShown(9); }}>
+            {(['FLEX', 'RECEIVERS', 'WR', 'TE', 'RB'] as const).map((value) => (
+              <button key={value} className={position === value ? 'active' : ''} onClick={() => changePosition(value)} title={value === 'FLEX' ? 'Running backs, wide receivers, and tight ends' : undefined}>
                 {value === 'RECEIVERS' ? 'WR + TE' : value}
               </button>
             ))}
@@ -239,7 +254,7 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
         <section className="filter-panel" aria-label="Minimum qualification filters">
           <label>TEAM<select value={team} onChange={(event) => setTeam(event.target.value)}><option value="ALL">All teams</option>{teams.map((value) => <option key={value}>{value}</option>)}</select></label>
           <label>MIN. GAMES<select value={minGames} onChange={(event) => setMinGames(Number(event.target.value))}>{[1, 2, 3, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <label>MIN. {position === 'RB' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label>MIN. {position === 'RB' || position === 'FLEX' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <button onClick={() => { setTeam('ALL'); setMinGames(windowKey === 'season' ? 6 : 1); setMinTargets(2); }}>Reset filters</button>
         </section>
       )}
