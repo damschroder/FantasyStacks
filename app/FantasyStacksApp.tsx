@@ -149,8 +149,8 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
       </nav>
 
       <section className="hero" id="top">
-        <div><p className="eyebrow">OPPORTUNITY → PRODUCTION</p><h1>See the whole<br />receiver.</h1></div>
-        <p className="hero-copy">Every layer reveals where volume becomes value. Compare the complete path from team opportunity to the end zone.</p>
+        <div><p className="eyebrow">OPPORTUNITY → PRODUCTION</p><h1>Cut through noisy fantasy points-per-game metrics.</h1></div>
+        <p className="hero-copy">Find the durable opportunity underpinning predictable performance.</p>
       </section>
 
       <section className="control-deck" aria-label="Analysis controls">
