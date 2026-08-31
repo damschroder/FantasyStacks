@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://fantasy-stacks-alpha.jdams.chatgpt.site'),
   title: 'FantasyStacks \u2014 See the whole receiver',
   description: 'A visual opportunity-to-production comparison tool for fantasy football receivers.',
   openGraph: {
