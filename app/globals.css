@@ -48,6 +48,8 @@ h1 { margin: 0; font-size: clamp(58px, 7.7vw, 116px); line-height: .82; letter-s
 .compare-names { display: flex; gap: 7px; flex-wrap: wrap; }
 .compare-names span { border: 1px solid var(--ink); border-radius: 999px; padding: 5px 8px; font-size: 9px; font-weight: 700; }
 .compare-bar button { border: 0; background: transparent; font-size: 10px; font-weight: 800; text-transform: uppercase; text-decoration: underline; }
+.compare-actions { display: flex; align-items: center; gap: 12px; }
+.compare-bar .compare-button { min-height: 36px; border: 1px solid var(--ink); background: var(--ink); color: white; padding: 0 14px; text-decoration: none; white-space: nowrap; }
 .sort-label { flex-direction: row; align-items: center; color: var(--muted); }
 .sort-label select { min-height: 32px; border-color: var(--ink); color: var(--ink); }
 .player-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }

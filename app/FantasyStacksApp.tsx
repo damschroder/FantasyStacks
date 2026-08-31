@@ -95,7 +95,7 @@ function PlayerStack({
       <div className="card-footer">
         <span>STACK {integer.format(profile.stackScore)}</span>
         <button className="pin-button" aria-pressed={pinned} onClick={onTogglePin}>
-          {pinned ? 'Pinned ✓' : 'Pin to compare +'}
+          {pinned ? 'Selected ✓' : 'Add to compare +'}
         </button>
       </div>
     </article>
@@ -110,6 +110,7 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
   const [minTargets, setMinTargets] = useState(2);
   const [sortKey, setSortKey] = useState<SortKey>('ppr');
   const [pinned, setPinned] = useState<string[]>([]);
+  const [compareMode, setCompareMode] = useState(false);
   const [shown, setShown] = useState(9);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -119,11 +120,12 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
     () => aggregateProfiles(dataset, windowKey, position, team, minGames, minTargets, sortKey),
     [dataset, windowKey, position, team, minGames, minTargets, sortKey],
   );
-  const displayProfiles = useMemo(() => {
-    const pinnedProfiles = pinned.map((id) => profiles.find((profile) => profile.playerId === id)).filter(Boolean) as Profile[];
-    const rest = profiles.filter((profile) => !pinned.includes(profile.playerId));
-    return [...pinnedProfiles, ...rest];
-  }, [profiles, pinned]);
+  const comparisonProfiles = useMemo(
+    () => profiles.filter((profile) => pinned.includes(profile.playerId)),
+    [profiles, pinned],
+  );
+  const displayProfiles = compareMode ? comparisonProfiles : profiles;
+  const visibleProfiles = compareMode ? displayProfiles : displayProfiles.slice(0, shown);
 
   const changeWindow = (next: WindowKey) => {
     setWindowKey(next);
@@ -131,9 +133,11 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
     setShown(9);
   };
   const togglePin = (playerId: string) => {
-    setPinned((current) => current.includes(playerId)
-      ? current.filter((id) => id !== playerId)
-      : current.length < 4 ? [...current, playerId] : current);
+    const next = pinned.includes(playerId)
+      ? pinned.filter((id) => id !== playerId)
+      : [...pinned, playerId];
+    setPinned(next);
+    if (!next.length) setCompareMode(false);
   };
 
   return (
@@ -185,14 +189,19 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
 
       {pinned.length > 0 && (
         <section className="compare-bar">
-          <div><span>COMPARISON SET</span><strong>{pinned.length} / 4 pinned</strong></div>
+          <div><span>COMPARISON SET</span><strong>{pinned.length} selected</strong></div>
           <div className="compare-names">{pinned.map((id) => dataset.players.find((player) => player.playerId === id)?.name).filter(Boolean).map((name) => <span key={name}>{name}</span>)}</div>
-          <button onClick={() => setPinned([])}>Clear</button>
+          <div className="compare-actions">
+            <button className="compare-button" onClick={() => { setCompareMode((current) => !current); setShown(Math.max(9, pinned.length)); }}>
+              {compareMode ? 'Show all stacks' : `Compare ${pinned.length}`}
+            </button>
+            <button onClick={() => { setPinned([]); setCompareMode(false); }}>Clear</button>
+          </div>
         </section>
       )}
 
       <section className="results-head">
-        <p>PRODUCTION PROFILES · {WINDOW_LABELS[windowKey].toUpperCase()}</p>
+        <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey].toUpperCase()}`}</p>
         <label className="sort-label">SORT
           <select value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(9); }}>
             {SORT_GROUPS.map((group) => (
@@ -207,14 +216,14 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
       {displayProfiles.length ? (
         <>
           <section className="player-grid">
-            {displayProfiles.slice(0, shown).map((profile) => (
+            {visibleProfiles.map((profile) => (
               <PlayerStack key={profile.playerId} profile={profile} rank={profiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} onTogglePin={() => togglePin(profile.playerId)} />
             ))}
           </section>
-          {shown < displayProfiles.length && <button className="load-more" onClick={() => setShown((current) => current + 9)}>Show 9 more <span>↓</span></button>}
+          {!compareMode && shown < displayProfiles.length && <button className="load-more" onClick={() => setShown((current) => current + 9)}>Show 9 more <span>↓</span></button>}
         </>
       ) : (
-        <section className="empty-state"><strong>No qualified receivers.</strong><p>Loosen the minimum games or targets filter to widen the field.</p></section>
+        <section className="empty-state"><strong>{compareMode ? 'No selected stacks in this view.' : 'No qualified receivers.'}</strong><p>{compareMode ? 'Show all stacks or loosen the filters to restore the comparison.' : 'Loosen the minimum games or targets filter to widen the field.'}</p></section>
       )}
 
       <footer>
