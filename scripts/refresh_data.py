@@ -18,7 +18,7 @@ RAW_DIR = ROOT / "data" / "raw"
 OUT_DIR = ROOT / "public" / "data" / "v1"
 SCHEMA_DIR = ROOT / "schema"
 SEASON = 2025
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 
 URLS = {
     "stats": f"https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{SEASON}.parquet",
@@ -99,7 +99,7 @@ def main() -> None:
     stats = stats[
         (stats["season"] == SEASON)
         & (stats["season_type"] == "REG")
-        & (stats["position"].isin(["WR", "TE"]))
+        & (stats["position"].isin(["WR", "TE", "RB"]))
     ].copy()
     snaps = snaps[(snaps["season"] == SEASON) & (snaps["game_type"] == "REG")].copy()
     pbp = pbp[(pbp["season"] == SEASON) & (pbp["season_type"] == "REG")].copy()
@@ -109,7 +109,11 @@ def main() -> None:
     snap_join = snaps[["game_id", "gsis_id", "offense_snaps"]].dropna(subset=["gsis_id"])
     snap_join = snap_join.rename(columns={"gsis_id": "player_id"}).drop_duplicates(["game_id", "player_id"])
     stats = stats.merge(snap_join, on=["game_id", "player_id"], how="left")
-    stats = stats[(stats["offense_snaps"].fillna(0) > 0) | (stats["targets"].fillna(0) > 0)].copy()
+    stats = stats[
+        (stats["offense_snaps"].fillna(0) > 0)
+        | (stats["targets"].fillna(0) > 0)
+        | (stats["carries"].fillna(0) > 0)
+    ].copy()
 
     # Team offensive play totals are reconstructed from the published snap total
     # and snap percentage for every offensive player. Median suppresses rounding noise.
@@ -168,8 +172,15 @@ def main() -> None:
                 "season": int(row.season),
                 "week": int(row.week),
                 "position": str(row.position),
-                "played": bool((0 if pd.isna(row.offense_snaps) else row.offense_snaps) > 0 or row.targets > 0),
+                "played": bool(
+                    (0 if pd.isna(row.offense_snaps) else row.offense_snaps) > 0
+                    or row.targets > 0
+                    or row.carries > 0
+                ),
                 "offensiveSnaps": as_int(row.offense_snaps),
+                "carries": int(row.carries),
+                "rushingYards": int(row.rushing_yards),
+                "rushingTouchdowns": int(row.rushing_tds),
                 "targets": int(row.targets),
                 "receptions": int(row.receptions),
                 "receivingYards": int(row.receiving_yards),

@@ -9,6 +9,7 @@
     "dev": "vinext dev",
     "prebuild": "node scripts/validate-contract.mjs",
     "build": "vinext build",
+    "build:pages": "node scripts/validate-contract.mjs && next build",
     "start": "vinext start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "data:refresh": "python scripts/refresh_data.py",

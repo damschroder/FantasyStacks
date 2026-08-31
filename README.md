@@ -1,8 +1,8 @@
 # FantasyStacks
 
-FantasyStacks is an experimental fantasy-football visualization for comparing WR and TE opportunity-to-production profiles.
+FantasyStacks is an experimental fantasy-football visualization for comparing WR, TE, and RB opportunity-to-production profiles.
 
-Each player stack has seven layers:
+Receiver stacks have seven layers:
 
 1. Team offensive possessions
 2. Team offensive plays
@@ -12,6 +12,8 @@ Each player stack has seven layers:
 6. Receiving yards
 7. Receiving touchdowns
 
+Running-back stacks preserve the same team-context base, then show touches plus targets, catches, scrimmage yards, and total touchdowns. Rushing volume uses the team color; target and receiving volume use the contrasting highlight color.
+
 Layer width is the player’s percentile for raw volume among the currently qualified cohort. Layer height is the percentile of the transition rate into that layer. Geometry is calculated after filtering; it is never stored in the source dataset.
 
 ## Run locally
@@ -20,6 +22,14 @@ Layer width is the player’s percentile for raw volume among the currently qual
 npm install
 npm run dev
 ```
+
+## Deploy with GitHub Pages
+
+Push the `main` branch to a GitHub repository named `FantasyStacks`, then enable **Settings → Pages → Source: GitHub Actions**. The included workflow validates the data contract, creates a static export, and publishes it at:
+
+`https://damschroder.github.io/FantasyStacks/`
+
+Local development remains at `http://localhost:3000`; the `/FantasyStacks` base path is applied only inside the Pages build.
 
 ## Refresh the data
 
