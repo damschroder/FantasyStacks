@@ -37,28 +37,26 @@ h1 { margin: 0; max-width: 980px; font-size: clamp(34px, 3.9vw, 56px); line-heig
 .results-count { padding: 16px 24px; display: flex; align-items: center; gap: 10px; }
 .results-count strong { font-size: 37px; line-height: 1; letter-spacing: -.06em; }
 .results-count span { font: 700 8px/1.25 monospace; letter-spacing: .1em; }
-.results-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin: 34px 4vw 14px; }
-.results-head p { margin: 0; }
-.results-tools { display: flex; align-items: end; gap: 24px; }
-.density-label { display: flex; flex-direction: column; gap: 7px; font: 700 9px/1 monospace; letter-spacing: .1em; color: var(--muted); }
-.ecr-label { display: flex; flex-direction: column; gap: 7px; font: 700 9px/1 monospace; letter-spacing: .1em; color: var(--muted); }
-.ecr-label > span:first-child { display: flex; justify-content: space-between; gap: 12px; }
-.ecr-label output { color: var(--ink); font-weight: 800; letter-spacing: .04em; }
-.ecr-range { position: relative; display: block; width: clamp(150px, 13vw, 220px); height: 20px; }
-.ecr-range::before { content: ''; position: absolute; inset: 8px 0 auto; height: 4px; background: linear-gradient(90deg, var(--line) 0 var(--ecr-start), var(--ink) var(--ecr-start) var(--ecr-end), var(--line) var(--ecr-end) 100%); }
-.ecr-range input { position: absolute; inset: 0; width: 100%; height: 20px; margin: 0; appearance: none; background: transparent; pointer-events: none; }
+.results-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin: 34px 4vw 14px; }
+.results-head p { margin: 0; font-size: 11px; }
+.results-tools { --slider-width: clamp(170px, 13vw, 220px); display: flex; align-items: flex-start; gap: 24px; }
+.density-label, .ecr-label, .sort-label { display: grid; grid-template-rows: auto 32px; gap: 7px; font: 700 10px/1 monospace; letter-spacing: .1em; color: var(--muted); }
+.density-label > span:first-child, .ecr-label > span:first-child { display: flex; justify-content: space-between; gap: 12px; }
+.density-label output, .ecr-label output { color: var(--ink); font: 800 10px/1 monospace; letter-spacing: .04em; }
+.ecr-range { position: relative; display: block; width: var(--slider-width); height: 32px; }
+.ecr-range::before { content: ''; position: absolute; inset: 14px 0 auto; height: 4px; background: linear-gradient(90deg, var(--line) 0 var(--ecr-start), var(--ink) var(--ecr-start) var(--ecr-end), var(--line) var(--ecr-end) 100%); }
+.ecr-range input { position: absolute; inset: 0; width: 100%; height: 32px; margin: 0; appearance: none; background: transparent; pointer-events: none; }
 .ecr-range input::-webkit-slider-runnable-track { height: 4px; background: transparent; }
 .ecr-range input::-webkit-slider-thumb { width: 14px; height: 14px; margin-top: -5px; appearance: none; border: 2px solid var(--ink); border-radius: 50%; background: var(--paper); pointer-events: auto; cursor: ew-resize; }
 .ecr-range input::-moz-range-track { height: 4px; background: transparent; }
 .ecr-range input::-moz-range-thumb { width: 11px; height: 11px; border: 2px solid var(--ink); border-radius: 50%; background: var(--paper); pointer-events: auto; cursor: ew-resize; }
-.density-input { min-height: 32px; display: flex; align-items: center; gap: 9px; }
-.density-input input { width: clamp(110px, 10vw, 170px); margin: 0; accent-color: var(--ink); cursor: ew-resize; }
-.density-input output { min-width: 50px; color: var(--ink); font: 800 9px/1 monospace; letter-spacing: .04em; white-space: nowrap; }
+.density-input { width: var(--slider-width); height: 32px; display: flex; align-items: center; }
+.density-input input { width: 100%; height: 32px; margin: 0; accent-color: var(--ink); cursor: ew-resize; }
 .filter-toggle { min-width: 104px; border: 0; border-right: 1px solid var(--ink); background: transparent; padding: 0 18px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
 .filter-toggle span { display: inline-block; margin-left: 9px; font-size: 18px; vertical-align: -1px; }
 .filter-toggle.active { background: var(--acid); }
 .filter-panel { margin: -1px 4vw 0; padding: 18px 22px; border: 1px solid var(--ink); display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)) auto; gap: 16px; align-items: end; background: var(--ink); color: white; }
-.filter-panel label, .sort-label { display: flex; flex-direction: column; gap: 7px; font: 700 9px/1 monospace; letter-spacing: .1em; }
+.filter-panel label { display: flex; flex-direction: column; gap: 7px; font: 700 9px/1 monospace; letter-spacing: .1em; }
 .filter-panel select, .sort-label select { min-height: 38px; border: 1px solid #777d7f; border-radius: 0; background: transparent; color: inherit; padding: 0 10px; font: 700 12px/1 Arial, sans-serif; }
 .filter-panel select option { color: var(--ink); }
 .filter-panel > button { min-height: 38px; border: 1px solid white; background: transparent; color: white; padding: 0 14px; font-size: 11px; font-weight: 700; }
@@ -71,8 +69,7 @@ h1 { margin: 0; max-width: 980px; font-size: clamp(34px, 3.9vw, 56px); line-heig
 .compare-bar button { border: 0; background: transparent; font-size: 10px; font-weight: 800; text-transform: uppercase; text-decoration: underline; }
 .compare-actions { display: flex; align-items: center; gap: 12px; }
 .compare-bar .compare-button { min-height: 36px; border: 1px solid var(--ink); background: var(--ink); color: white; padding: 0 14px; text-decoration: none; white-space: nowrap; }
-.sort-label { flex-direction: row; align-items: center; color: var(--muted); }
-.sort-label select { min-height: 32px; border-color: var(--ink); color: var(--ink); }
+.sort-label select { min-height: 32px; border-color: var(--ink); color: var(--ink); font-size: 13px; }
 .player-grid { display: grid; grid-template-columns: repeat(var(--density, 3), minmax(0, 1fr)); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
 .player-card { position: relative; min-width: 0; padding: 18px 2.4vw; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; transition: background-color .18s ease; }
 .player-grid:is([data-density='4'], [data-density='5']) .player-card { padding-inline: 1.7vw; }

@@ -385,7 +385,8 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               />
             </span>
           </label>
-          <label className="density-label" htmlFor="density">DENSITY
+          <label className="density-label" htmlFor="density">
+            <span>DENSITY <output htmlFor="density">{density} / ROW</output></span>
             <span className="density-input">
               <input
                 id="density"
@@ -401,10 +402,9 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
                   setShown(next * 3);
                 }}
               />
-              <output htmlFor="density">{density} / ROW</output>
             </span>
           </label>
-          <label className="sort-label">SORT
+          <label className="sort-label"><span>SORT</span>
             <select value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(density * 3); }}>
               {sortGroups.map((group) => (
                 <optgroup label={group.label} key={group.label}>
