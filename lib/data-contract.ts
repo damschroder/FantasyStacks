@@ -95,7 +95,6 @@ export type ScoringMode = 'full' | 'half' | 'off';
 export type SortKey =
   | 'ppr'
   | 'stackScore'
-  | 'possessions'
   | 'teamPlays'
   | 'snaps'
   | 'opportunities'
@@ -108,8 +107,6 @@ export type SortKey =
   | 'touchdowns'
   | 'rushingTouchdowns'
   | 'receivingTouchdowns'
-  | 'possessionPerGame'
-  | 'playsPerPossession'
   | 'snapShare'
   | 'targetsPerSnap'
   | 'opportunitiesPerSnap'
@@ -319,30 +316,29 @@ export function aggregateProfiles(
     });
 
   const totalVolumeValues = (profile: Profile) => profile.position === 'QB'
-    ? [profile.possessions, profile.teamPlays, profile.snaps, profile.passingAttempts, profile.negativePlays, profile.completions, profile.passingYards, profile.passingTouchdowns, profile.fantasyPoints]
+    ? [profile.teamPlays, profile.snaps, profile.passingAttempts, profile.negativePlays, profile.completions, profile.passingYards, profile.passingTouchdowns, profile.fantasyPoints]
     : profile.position === 'RB'
-      ? [profile.possessions, profile.teamPlays, profile.snaps, profile.opportunities, profile.receptions, profile.yards, profile.touchdowns, profile.fantasyPoints]
-      : [profile.possessions, profile.teamPlays, profile.snaps, profile.targets, profile.receptions, profile.yards, profile.touchdowns, profile.fantasyPoints];
+      ? [profile.teamPlays, profile.snaps, profile.opportunities, profile.receptions, profile.yards, profile.touchdowns, profile.fantasyPoints]
+      : [profile.teamPlays, profile.snaps, profile.targets, profile.receptions, profile.yards, profile.touchdowns, profile.fantasyPoints];
   const volumeValues = (profile: Profile) => totalVolumeValues(profile).map((value) =>
     volumeMode === 'perGame' ? safeRate(value, profile.games) : value);
   const efficiencyValues = (profile: Profile) => profile.position === 'QB'
-    ? [profile.possessionPerGame, profile.playsPerPossession, profile.snapShare, profile.attemptsPerSnap, profile.cleanDropbackRate, profile.completionRate, profile.yardsPerAttempt, profile.touchdownsPerAttempt, profile.fantasyPointsPerOpportunity]
+    ? [profile.snapShare, profile.attemptsPerSnap, profile.cleanDropbackRate, profile.completionRate, profile.yardsPerAttempt, profile.touchdownsPerAttempt, profile.fantasyPointsPerOpportunity]
     : profile.position === 'RB'
-      ? [profile.possessionPerGame, profile.playsPerPossession, profile.snapShare, profile.opportunitiesPerSnap, profile.catchRate, profile.yardsPerTouch, profile.touchdownsPerTouch, profile.fantasyPointsPerOpportunity]
-      : [profile.possessionPerGame, profile.playsPerPossession, profile.snapShare, profile.targetsPerSnap, profile.catchRate, profile.yardsPerCatch, profile.touchdownsPerCatch, profile.fantasyPointsPerOpportunity];
+      ? [profile.snapShare, profile.opportunitiesPerSnap, profile.catchRate, profile.yardsPerTouch, profile.touchdownsPerTouch, profile.fantasyPointsPerOpportunity]
+      : [profile.snapShare, profile.targetsPerSnap, profile.catchRate, profile.yardsPerCatch, profile.touchdownsPerCatch, profile.fantasyPointsPerOpportunity];
   const volumeMatrix = profiles.map(volumeValues);
   const efficiencyMatrix = profiles.map(efficiencyValues);
   for (const profile of profiles) {
     profile.widths = volumeValues(profile).map((value, index) => percentile(value, volumeMatrix.map((candidate) => candidate[index])));
-    profile.heights = efficiencyValues(profile).map((value, index) => percentile(value, efficiencyMatrix.map((candidate) => candidate[index])));
-    const scoreParts = [...profile.widths.slice(2), ...profile.heights.slice(2)];
+    profile.heights = [0, ...efficiencyValues(profile).map((value, index) => percentile(value, efficiencyMatrix.map((candidate) => candidate[index])))];
+    const scoreParts = [...profile.widths.slice(1), ...profile.heights.slice(1)];
     profile.stackScore = scoreParts.reduce((a, b) => a + b, 0) / scoreParts.length;
   }
 
   const selectors: Record<SortKey, (profile: Profile) => number> = {
     ppr: (profile) => profile.fantasyPoints,
     stackScore: (profile) => profile.stackScore,
-    possessions: (profile) => profile.possessions,
     teamPlays: (profile) => profile.teamPlays,
     snaps: (profile) => profile.snaps,
     opportunities: (profile) => profile.opportunities,
@@ -355,8 +351,6 @@ export function aggregateProfiles(
     touchdowns: (profile) => profile.touchdowns,
     rushingTouchdowns: (profile) => profile.rushingTouchdowns,
     receivingTouchdowns: (profile) => profile.receivingTouchdowns,
-    possessionPerGame: (profile) => profile.possessionPerGame,
-    playsPerPossession: (profile) => profile.playsPerPossession,
     snapShare: (profile) => profile.snapShare,
     targetsPerSnap: (profile) => profile.targetsPerSnap,
     opportunitiesPerSnap: (profile) => profile.opportunitiesPerSnap,
@@ -382,7 +376,7 @@ export function aggregateProfiles(
     fantasyPointsPerOpportunity: (profile) => profile.fantasyPointsPerOpportunity,
   };
   const volumeSortKeys = new Set<SortKey>([
-    'ppr', 'possessions', 'teamPlays', 'snaps', 'opportunities', 'carries', 'targets', 'receptions',
+    'ppr', 'teamPlays', 'snaps', 'opportunities', 'carries', 'targets', 'receptions',
     'yards', 'rushingYards', 'receivingYards', 'touchdowns', 'rushingTouchdowns', 'receivingTouchdowns',
     'passingAttempts', 'completions', 'passingYards', 'passingTouchdowns', 'negativePlays', 'interceptions', 'sacks',
   ]);

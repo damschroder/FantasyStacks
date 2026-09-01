@@ -22,7 +22,6 @@ const WINDOW_LABELS: Record<WindowKey, string> = {
 const SORT_LABELS: Record<SortKey, string> = {
   ppr: 'Fantasy points',
   stackScore: 'Stack score',
-  possessions: 'Team possessions',
   teamPlays: 'Team plays',
   snaps: 'Offensive snaps',
   opportunities: 'Touches + targets',
@@ -35,8 +34,6 @@ const SORT_LABELS: Record<SortKey, string> = {
   touchdowns: 'Total TDs',
   rushingTouchdowns: 'Rushing TDs',
   receivingTouchdowns: 'Receiving TDs',
-  possessionPerGame: 'Possessions / game',
-  playsPerPossession: 'Plays / possession',
   snapShare: 'Snap share',
   targetsPerSnap: 'Targets / snap',
   opportunitiesPerSnap: 'Opportunities / snap',
@@ -63,25 +60,25 @@ const SORT_LABELS: Record<SortKey, string> = {
 };
 const RECEIVER_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
-  { label: 'Stack layers · volume', keys: ['possessions', 'teamPlays', 'snaps', 'targets', 'receptions', 'yards', 'touchdowns'] },
-  { label: 'Transitions · efficiency', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch', 'fantasyPointsPerOpportunity'] },
+  { label: 'Stack layers · volume', keys: ['teamPlays', 'snaps', 'targets', 'receptions', 'yards', 'touchdowns'] },
+  { label: 'Transitions · efficiency', keys: ['snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch', 'fantasyPointsPerOpportunity'] },
 ];
 const RB_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
-  { label: 'Stack layers · volume', keys: ['possessions', 'teamPlays', 'snaps', 'opportunities', 'carries', 'targets', 'receptions', 'yards', 'rushingYards', 'receivingYards', 'touchdowns', 'rushingTouchdowns', 'receivingTouchdowns'] },
-  { label: 'Transitions · efficiency', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'opportunitiesPerSnap', 'catchRate', 'yardsPerTouch', 'touchdownsPerTouch', 'fantasyPointsPerOpportunity'] },
+  { label: 'Stack layers · volume', keys: ['teamPlays', 'snaps', 'opportunities', 'carries', 'targets', 'receptions', 'yards', 'rushingYards', 'receivingYards', 'touchdowns', 'rushingTouchdowns', 'receivingTouchdowns'] },
+  { label: 'Transitions · efficiency', keys: ['snapShare', 'opportunitiesPerSnap', 'catchRate', 'yardsPerTouch', 'touchdownsPerTouch', 'fantasyPointsPerOpportunity'] },
 ];
 const FLEX_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
-  { label: 'Shared layers · volume', keys: ['possessions', 'teamPlays', 'snaps', 'targets', 'receptions', 'receivingYards', 'receivingTouchdowns'] },
+  { label: 'Shared layers · volume', keys: ['teamPlays', 'snaps', 'targets', 'receptions', 'receivingYards', 'receivingTouchdowns'] },
   { label: 'RB + composite layers', keys: ['opportunities', 'carries', 'yards', 'rushingYards', 'touchdowns', 'rushingTouchdowns'] },
-  { label: 'Shared transitions', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch', 'fantasyPointsPerOpportunity'] },
+  { label: 'Shared transitions', keys: ['snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch', 'fantasyPointsPerOpportunity'] },
   { label: 'RB + composite transitions', keys: ['opportunitiesPerSnap', 'yardsPerTouch', 'touchdownsPerTouch'] },
 ];
 const QB_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
-  { label: 'Stack layers · volume', keys: ['possessions', 'teamPlays', 'snaps', 'passingAttempts', 'negativePlays', 'sacks', 'interceptions', 'completions', 'passingYards', 'passingTouchdowns'] },
-  { label: 'Transitions · efficiency', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'attemptsPerSnap', 'cleanDropbackRate', 'completionRate', 'yardsPerAttempt', 'touchdownsPerAttempt', 'fantasyPointsPerOpportunity', 'sackRate', 'interceptionRate'] },
+  { label: 'Stack layers · volume', keys: ['teamPlays', 'snaps', 'passingAttempts', 'negativePlays', 'sacks', 'interceptions', 'completions', 'passingYards', 'passingTouchdowns'] },
+  { label: 'Transitions · efficiency', keys: ['snapShare', 'attemptsPerSnap', 'cleanDropbackRate', 'completionRate', 'yardsPerAttempt', 'touchdownsPerAttempt', 'fantasyPointsPerOpportunity', 'sackRate', 'interceptionRate'] },
 ];
 
 const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
@@ -92,7 +89,7 @@ const minimumGamesForWindow = (windowKey: WindowKey) => windowKey === 'thisYear'
 type StackLayer = {
   label: string;
   value: string;
-  rate: string;
+  rate?: string;
   receivingOnly?: boolean;
   split?: { primary: number; secondary: number; description: string };
 };
@@ -118,8 +115,7 @@ function PlayerStack({
   const volume = (value: number) => perGame ? decimal.format(value / profile.games) : integer.format(value);
   const splitValue = (value: number, label: string) => `${volume(value)} ${label}${perGame ? ' / game' : ''}`;
   const receiverLayers: StackLayer[] = [
-    { label: 'Possessions', value: volume(profile.possessions), rate: `${decimal.format(profile.possessionPerGame)} / game` },
-    { label: 'Team plays', value: volume(profile.teamPlays), rate: `${decimal.format(profile.playsPerPossession)} / possession` },
+    { label: 'Team plays', value: volume(profile.teamPlays) },
     { label: 'Snaps', value: volume(profile.snaps), rate: `${percent(profile.snapShare)} snap share` },
     { label: 'Targets', value: volume(profile.targets), rate: `${percent(profile.targetsPerSnap)} / snap` },
     { label: 'Catches', value: volume(profile.receptions), rate: `${percent(profile.catchRate)} caught` },
@@ -128,8 +124,7 @@ function PlayerStack({
     { label: 'Fantasy pts', value: volume(profile.fantasyPoints), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / target` },
   ];
   const runningBackLayers: StackLayer[] = [
-    { label: 'Possessions', value: volume(profile.possessions), rate: `${decimal.format(profile.possessionPerGame)} / game` },
-    { label: 'Team plays', value: volume(profile.teamPlays), rate: `${decimal.format(profile.playsPerPossession)} / possession` },
+    { label: 'Team plays', value: volume(profile.teamPlays) },
     { label: 'Snaps', value: volume(profile.snaps), rate: `${percent(profile.snapShare)} snap share` },
     {
       label: 'Touches + targets',
@@ -153,8 +148,7 @@ function PlayerStack({
     { label: 'Fantasy pts', value: volume(profile.fantasyPoints), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / opportunity` },
   ];
   const quarterbackLayers: StackLayer[] = [
-    { label: 'Possessions', value: volume(profile.possessions), rate: `${decimal.format(profile.possessionPerGame)} / game` },
-    { label: 'Team plays', value: volume(profile.teamPlays), rate: `${decimal.format(profile.playsPerPossession)} / possession` },
+    { label: 'Team plays', value: volume(profile.teamPlays) },
     { label: 'Snaps', value: volume(profile.snaps), rate: `${percent(profile.snapShare)} snap share` },
     { label: 'Passes', value: volume(profile.passingAttempts), rate: `${percent(profile.attemptsPerSnap)} / snap` },
     {
@@ -196,13 +190,13 @@ function PlayerStack({
         {[...layers].reverse().map((layer, reverseIndex) => {
           const index = layers.length - 1 - reverseIndex;
           const width = 17 + profile.widths[index] * 0.83;
-          const height = 39 + profile.heights[index] * 0.23;
+          const height = index === 0 ? 46 : 39 + profile.heights[index] * 0.23;
           const splitTotal = (layer.split?.primary ?? 0) + (layer.split?.secondary ?? 0);
           const splitPercent = splitTotal > 0 ? ((layer.split?.primary ?? 0) / splitTotal) * 100 : 100;
           const tierClass = `tier tier-${reverseIndex}${layer.split ? ' split-tier' : ''}${layer.receivingOnly ? ' receiving-tier' : ''}`;
           return (
             <div className="tier-wrap" key={layer.label}>
-              <span className="rate-label">{layer.rate}</span>
+              {layer.rate && <span className="rate-label">{layer.rate}</span>}
               <div
                 className={tierClass}
                 title={layer.split?.description ?? `${layer.label}: ${layer.value}`}
