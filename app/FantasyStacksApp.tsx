@@ -147,7 +147,7 @@ function PlayerStack({
       <div className="stack">
         {[...layers].reverse().map((layer, reverseIndex) => {
           const index = layers.length - 1 - reverseIndex;
-          const width = 34 + profile.widths[index] * 0.66;
+          const width = 17 + profile.widths[index] * 0.83;
           const height = 39 + profile.heights[index] * 0.23;
           const splitTotal = (layer.split?.primary ?? 0) + (layer.split?.secondary ?? 0);
           const splitPercent = splitTotal > 0 ? ((layer.split?.primary ?? 0) / splitTotal) * 100 : 100;
@@ -157,7 +157,7 @@ function PlayerStack({
               <span className="rate-label">{layer.rate}</span>
               <div
                 className={tierClass}
-                title={layer.split?.description}
+                title={layer.split?.description ?? `${layer.label}: ${layer.value}`}
                 style={{ width: `${width}%`, height: `${height}px`, '--split': `${splitPercent}%` } as React.CSSProperties}
               >
                 <span>{layer.label}</span><strong>{layer.value}</strong>
