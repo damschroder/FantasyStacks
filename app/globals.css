@@ -69,7 +69,10 @@ h1 { margin: 0; max-width: 980px; font-size: clamp(34px, 3.9vw, 56px); line-heig
 .compare-bar button { border: 0; background: transparent; font-size: 10px; font-weight: 800; text-transform: uppercase; text-decoration: underline; }
 .compare-actions { display: flex; align-items: center; gap: 12px; }
 .compare-bar .compare-button { min-height: 36px; border: 1px solid var(--ink); background: var(--ink); color: white; padding: 0 14px; text-decoration: none; white-space: nowrap; }
+.sort-input { height: 32px; display: flex; align-items: stretch; }
 .sort-label select { min-height: 32px; border-color: var(--ink); color: var(--ink); font-size: 13px; }
+.sort-direction { width: 34px; min-height: 32px; margin-left: -1px; border: 1px solid var(--ink); background: var(--paper); display: grid; place-items: center; font: 800 18px/1 monospace; }
+.sort-direction:hover { background: var(--acid); }
 .player-grid { display: grid; grid-template-columns: repeat(var(--density, 3), minmax(0, 1fr)); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
 .player-card { position: relative; min-width: 0; padding: 18px 2.4vw; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; transition: background-color .18s ease; }
 .player-grid:is([data-density='4'], [data-density='5']) .player-card { padding-inline: 1.7vw; }
