@@ -173,7 +173,7 @@ function PlayerStack({
             <span>{profile.games} GAMES</span>
           </p>
           <h2>{profile.name}</h2>
-          <p className="ppr-line"><strong>{decimal.format(profile.ppr)}</strong> PPR &nbsp; <span>{decimal.format(profile.ppr / profile.games)} / game</span></p>
+          <p className="ppr-line"><strong>{decimal.format(profile.ppr)}</strong> PPR &nbsp; <span>{decimal.format(profile.ppr / profile.games)} / game</span>{profile.ecr !== null && <em>FP ECR {decimal.format(profile.ecr)}</em>}</p>
           {profile.position === 'RB' && <p className="role-legend"><span className="rush-key">RUSH / TOUCH</span><span className="receive-key">TARGET / RECEIVE</span></p>}
           {profile.position === 'QB' && <p className="role-legend"><span className="sack-key">SACKS</span><span className="interception-key">INTERCEPTIONS</span></p>}
         </div>
@@ -212,6 +212,8 @@ function PlayerStack({
 }
 
 export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
+  const rankedEcrCeiling = Math.ceil(Math.max(1, ...dataset.players.map((player) => player.ecr ?? 0)) / 25) * 25;
+  const ecrUnrankedSentinel = rankedEcrCeiling + 1;
   const [windowKey, setWindowKey] = useState<WindowKey>('season');
   const [position, setPosition] = useState<PositionFilter>('RECEIVERS');
   const [team, setTeam] = useState('ALL');
@@ -221,14 +223,16 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
   const [pinned, setPinned] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
   const [density, setDensity] = useState(3);
+  const [minEcr, setMinEcr] = useState(1);
+  const [maxEcr, setMaxEcr] = useState(ecrUnrankedSentinel);
   const [shown, setShown] = useState(9);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
 
   const teams = useMemo(() => [...new Set(dataset.playerGames.map((game) => game.team))].sort(), [dataset]);
   const profiles = useMemo(
-    () => aggregateProfiles(dataset, windowKey, position, team, minGames, minTargets, sortKey),
-    [dataset, windowKey, position, team, minGames, minTargets, sortKey],
+    () => aggregateProfiles(dataset, windowKey, position, team, minGames, minTargets, minEcr, Math.min(maxEcr, rankedEcrCeiling), maxEcr === ecrUnrankedSentinel, sortKey),
+    [dataset, windowKey, position, team, minGames, minTargets, minEcr, maxEcr, rankedEcrCeiling, ecrUnrankedSentinel, sortKey],
   );
   const comparisonProfiles = useMemo(
     () => profiles.filter((profile) => pinned.includes(profile.playerId)),
@@ -323,6 +327,35 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
       <section className="results-head">
         <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey].toUpperCase()}`}</p>
         <div className="results-tools">
+          <label className="ecr-label">
+            <span>FP ECR RANGE <output>{integer.format(minEcr)}–{maxEcr === ecrUnrankedSentinel ? 'NR' : integer.format(maxEcr)}</output></span>
+            <span
+              className="ecr-range"
+              style={{
+                '--ecr-start': `${((minEcr - 1) / (ecrUnrankedSentinel - 1)) * 100}%`,
+                '--ecr-end': `${((maxEcr - 1) / (ecrUnrankedSentinel - 1)) * 100}%`,
+              } as React.CSSProperties}
+            >
+              <input
+                type="range"
+                min="1"
+                max={ecrUnrankedSentinel}
+                step="1"
+                value={minEcr}
+                aria-label="Minimum FantasyPros ECR"
+                onChange={(event) => { setMinEcr(Math.min(Number(event.target.value), maxEcr - 1)); setShown(density * 3); }}
+              />
+              <input
+                type="range"
+                min="1"
+                max={ecrUnrankedSentinel}
+                step="1"
+                value={maxEcr}
+                aria-label="Maximum FantasyPros ECR; maximum includes unranked players"
+                onChange={(event) => { setMaxEcr(Math.max(Number(event.target.value), minEcr + 1)); setShown(density * 3); }}
+              />
+            </span>
+          </label>
           <label className="density-label" htmlFor="density">DENSITY
             <span className="density-input">
               <input
@@ -383,6 +416,7 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
               <div><strong>BULGES</strong><p>Useful signal, not a flaw. A wide yardage tier above modest catches identifies explosive production.</p></div>
               <div><strong>RB COLOR</strong><p>Team color shows rushing touches and production. The highlight color shows targets and receiving production.</p></div>
               <div><strong>QB COLOR</strong><p>The split loss layer separates sacks in team color from interceptions in the highlight color. Its height rewards clean dropbacks.</p></div>
+              <div><strong>FP ECR RANGE</strong><p>Limits the field to the current FantasyPros redraft consensus range. The upper NR endpoint retains players without a current ranking.</p></div>
               <div><strong>LABELS</strong><p>The unnormalized truth: raw totals and the exact rate that controls each layer’s height.</p></div>
             </div>
             <button className="modal-done" onClick={() => setGuideOpen(false)}>Explore the stacks</button>

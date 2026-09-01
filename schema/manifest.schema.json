@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["schemaVersion", "generatedAt", "season", "provider", "files", "definitions"],
   "properties": {
-    "schemaVersion": { "const": "1.2.0" },
+    "schemaVersion": { "const": "1.3.0" },
     "generatedAt": { "type": "string", "format": "date-time" },
     "season": { "type": "integer", "minimum": 1999 },
     "provider": {
@@ -32,10 +32,11 @@
     "definitions": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["offensivePossessions", "offensivePlays", "nullSemantics"],
+      "required": ["offensivePossessions", "offensivePlays", "ecr", "nullSemantics"],
       "properties": {
         "offensivePossessions": { "type": "string" },
         "offensivePlays": { "type": "string" },
+        "ecr": { "type": "string" },
         "nullSemantics": { "const": "null means unknown or unavailable; 0 means a verified zero" }
       }
     }

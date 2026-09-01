@@ -36,6 +36,8 @@ assert all(game["carries"] >= 0 for game in player_games)
 assert all(game["rushingTouchdowns"] <= game["carries"] for game in player_games)
 assert any(game["position"] == "RB" and game["carries"] > 0 for game in player_games)
 assert any(game["position"] == "QB" and game["passingAttempts"] > 0 for game in player_games)
+assert all(player["ecr"] is None or player["ecr"] > 0 for player in players)
+assert sum(player["ecr"] is not None for player in players) >= 300
 
 for key, descriptor in manifest["files"].items():
     path = DATA / Path(descriptor["path"]).name

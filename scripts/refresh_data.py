@@ -18,7 +18,7 @@ RAW_DIR = ROOT / "data" / "raw"
 OUT_DIR = ROOT / "public" / "data" / "v1"
 SCHEMA_DIR = ROOT / "schema"
 SEASON = 2025
-SCHEMA_VERSION = "1.2.0"
+SCHEMA_VERSION = "1.3.0"
 
 URLS = {
     "stats": f"https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{SEASON}.parquet",
@@ -26,11 +26,15 @@ URLS = {
     "pbp": f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.parquet",
     "players": "https://github.com/nflverse/nflverse-data/releases/download/players/players.parquet",
 }
+CSV_URLS = {
+    "ecr": "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_fpecr_latest.csv",
+    "playerids": "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_playerids.csv",
+}
 
 
-def download(name: str, url: str) -> Path:
+def download(name: str, url: str, suffix: str = ".parquet") -> Path:
     RAW_DIR.mkdir(parents=True, exist_ok=True)
-    destination = RAW_DIR / f"{name}.parquet"
+    destination = RAW_DIR / f"{name}{suffix}"
     temporary = destination.with_suffix(".part")
     with requests.get(
         url,
@@ -87,10 +91,13 @@ def validate(schema_name: str, payload: dict) -> None:
 
 def main() -> None:
     paths = {name: download(name, url) for name, url in URLS.items()}
+    csv_paths = {name: download(name, url, ".csv") for name, url in CSV_URLS.items()}
 
     stats = pd.read_parquet(paths["stats"])
     snaps = pd.read_parquet(paths["snaps"])
     people = pd.read_parquet(paths["players"])
+    rankings = pd.read_csv(csv_paths["ecr"])
+    fantasy_ids = pd.read_csv(csv_paths["playerids"], low_memory=False)
     pbp = pq.read_table(
         paths["pbp"],
         columns=["game_id", "season", "season_type", "week", "game_date", "posteam", "drive"],
@@ -103,6 +110,22 @@ def main() -> None:
     ].copy()
     snaps = snaps[(snaps["season"] == SEASON) & (snaps["game_type"] == "REG")].copy()
     pbp = pbp[(pbp["season"] == SEASON) & (pbp["season_type"] == "REG")].copy()
+
+    rankings = rankings[
+        (rankings["page_type"] == "redraft-overall")
+        & (rankings["pos"].isin(["WR", "TE", "RB", "QB"]))
+    ].copy()
+    rankings["id"] = pd.to_numeric(rankings["id"], errors="coerce")
+    fantasy_ids["fantasypros_id"] = pd.to_numeric(fantasy_ids["fantasypros_id"], errors="coerce")
+    rankings = rankings.merge(
+        fantasy_ids[["fantasypros_id", "gsis_id"]].drop_duplicates("fantasypros_id"),
+        left_on="id",
+        right_on="fantasypros_id",
+        how="left",
+    ).dropna(subset=["gsis_id", "ecr"])
+    rankings = rankings.sort_values("scrape_date").drop_duplicates("gsis_id", keep="last")
+    ecr_by_gsis = rankings.set_index("gsis_id")["ecr"].to_dict()
+    ecr_date_by_gsis = rankings.set_index("gsis_id")["scrape_date"].astype(str).to_dict()
 
     id_map = people[["gsis_id", "pfr_id"]].dropna(subset=["gsis_id"]).drop_duplicates("pfr_id")
     snaps = snaps.merge(id_map, left_on="pfr_player_id", right_on="pfr_id", how="left")
@@ -211,6 +234,8 @@ def main() -> None:
                 "position": str(stat["position"]),
                 "latestTeam": as_text(stat["team"]),
                 "headshotUrl": as_text(stat["headshot_url"]),
+                "ecr": None if player_id not in ecr_by_gsis else round(float(ecr_by_gsis[player_id]), 2),
+                "ecrUpdatedAt": ecr_date_by_gsis.get(player_id),
                 "sourceIds": {
                     "gsis": player_id,
                     "pfr": None if person is None else as_text(person["pfr_id"]),
@@ -237,12 +262,13 @@ def main() -> None:
         "provider": {
             "name": "nflverse",
             "license": "CC BY 4.0; underlying NFL data remains subject to its owners' terms",
-            "sourceUrls": list(URLS.values()),
+            "sourceUrls": [*URLS.values(), *CSV_URLS.values()],
         },
         "files": files,
         "definitions": {
             "offensivePossessions": "Distinct nflverse play-by-play drive identifiers with a recorded possession team.",
             "offensivePlays": "Median team snap total reconstructed from player offense_snaps / offense_pct, rounded to a whole play.",
+            "ecr": "Current FantasyPros redraft-overall expert consensus rank distributed by DynastyProcess through nflverse; null means the player is not currently ranked.",
             "nullSemantics": "null means unknown or unavailable; 0 means a verified zero",
         },
     }

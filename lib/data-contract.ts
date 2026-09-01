@@ -7,6 +7,8 @@ export interface Player {
   position: Position;
   latestTeam: string | null;
   headshotUrl: string | null;
+  ecr: number | null;
+  ecrUpdatedAt: string | null;
   sourceIds: { gsis: string; pfr: string | null };
 }
 
@@ -47,10 +49,10 @@ export interface TeamGame {
   offensivePlays: number | null;
 }
 
-export interface Envelope<T> { schemaVersion: '1.2.0'; data: T[] }
+export interface Envelope<T> { schemaVersion: '1.3.0'; data: T[] }
 
 export interface Manifest {
-  schemaVersion: '1.2.0';
+  schemaVersion: '1.3.0';
   generatedAt: string;
   season: number;
   provider: { name: 'nflverse'; license: string; sourceUrls: string[] };
@@ -72,10 +74,10 @@ export function parseDataset(
   teamGames: unknown,
 ): Dataset {
   const envelopes = [players, playerGames, teamGames] as Array<{ schemaVersion?: unknown; data?: unknown }>;
-  if (!manifest || typeof manifest !== 'object' || (manifest as { schemaVersion?: unknown }).schemaVersion !== '1.2.0') {
+  if (!manifest || typeof manifest !== 'object' || (manifest as { schemaVersion?: unknown }).schemaVersion !== '1.3.0') {
     throw new Error('Unsupported FantasyStacks manifest');
   }
-  if (envelopes.some((envelope) => envelope?.schemaVersion !== '1.2.0' || !Array.isArray(envelope?.data))) {
+  if (envelopes.some((envelope) => envelope?.schemaVersion !== '1.3.0' || !Array.isArray(envelope?.data))) {
     throw new Error('Unsupported FantasyStacks data envelope');
   }
   return {
@@ -133,6 +135,7 @@ export interface Profile {
   name: string;
   position: Position;
   team: string;
+  ecr: number | null;
   games: number;
   possessions: number;
   teamPlays: number;
@@ -192,6 +195,9 @@ export function aggregateProfiles(
   team: string,
   minGames: number,
   minUsagePerGame: number,
+  minEcr: number,
+  maxEcr: number,
+  includeUnranked: boolean,
   sortKey: SortKey,
 ): Profile[] {
   const maximumWeek = Math.max(...dataset.playerGames.map((game) => game.week));
@@ -205,7 +211,7 @@ export function aggregateProfiles(
   const players = new Map(dataset.players.map((player) => [player.playerId, player]));
   const teamGames = new Map(dataset.teamGames.map((game) => [`${game.gameId}:${game.team}`, game]));
   type Accumulator = Pick<Profile,
-    'playerId' | 'name' | 'position' | 'team' | 'games' | 'possessions' | 'teamPlays' | 'snaps'
+    'playerId' | 'name' | 'position' | 'team' | 'ecr' | 'games' | 'possessions' | 'teamPlays' | 'snaps'
     | 'passingAttempts' | 'completions' | 'passingYards' | 'passingTouchdowns' | 'interceptions' | 'sacks'
     | 'carries' | 'targets' | 'receptions' | 'rushingYards' | 'receivingYards'
     | 'rushingTouchdowns' | 'receivingTouchdowns' | 'ppr'>;
@@ -221,7 +227,7 @@ export function aggregateProfiles(
     if (!player) continue;
     const context = teamGames.get(`${game.gameId}:${game.team}`);
     const current = accumulators.get(game.playerId) ?? {
-      playerId: game.playerId, name: player.name, position: game.position, team: game.team,
+      playerId: game.playerId, name: player.name, position: game.position, team: game.team, ecr: player.ecr,
       games: 0, possessions: 0, teamPlays: 0, snaps: 0,
       passingAttempts: 0, completions: 0, passingYards: 0, passingTouchdowns: 0, interceptions: 0, sacks: 0,
       carries: 0, targets: 0,
@@ -257,7 +263,10 @@ export function aggregateProfiles(
         : profile.position === 'RB'
           ? profile.carries + profile.targets
           : profile.targets;
-      return profile.games >= minGames && safeRate(usage, profile.games) >= minUsagePerGame;
+      const ecrMatches = profile.ecr === null
+        ? includeUnranked
+        : profile.ecr >= minEcr && profile.ecr <= maxEcr;
+      return profile.games >= minGames && safeRate(usage, profile.games) >= minUsagePerGame && ecrMatches;
     })
     .map((profile): Profile => {
       const isRunningBack = profile.position === 'RB';
