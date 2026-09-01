@@ -18,7 +18,7 @@ RAW_DIR = ROOT / "data" / "raw"
 OUT_DIR = ROOT / "public" / "data" / "v1"
 SCHEMA_DIR = ROOT / "schema"
 SEASON = 2025
-SCHEMA_VERSION = "1.1.0"
+SCHEMA_VERSION = "1.2.0"
 
 URLS = {
     "stats": f"https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{SEASON}.parquet",
@@ -99,7 +99,7 @@ def main() -> None:
     stats = stats[
         (stats["season"] == SEASON)
         & (stats["season_type"] == "REG")
-        & (stats["position"].isin(["WR", "TE", "RB"]))
+        & (stats["position"].isin(["WR", "TE", "RB", "QB"]))
     ].copy()
     snaps = snaps[(snaps["season"] == SEASON) & (snaps["game_type"] == "REG")].copy()
     pbp = pbp[(pbp["season"] == SEASON) & (pbp["season_type"] == "REG")].copy()
@@ -113,6 +113,7 @@ def main() -> None:
         (stats["offense_snaps"].fillna(0) > 0)
         | (stats["targets"].fillna(0) > 0)
         | (stats["carries"].fillna(0) > 0)
+        | (stats["attempts"].fillna(0) > 0)
     ].copy()
 
     # Team offensive play totals are reconstructed from the published snap total
@@ -176,8 +177,15 @@ def main() -> None:
                     (0 if pd.isna(row.offense_snaps) else row.offense_snaps) > 0
                     or row.targets > 0
                     or row.carries > 0
+                    or row.attempts > 0
                 ),
                 "offensiveSnaps": as_int(row.offense_snaps),
+                "passingAttempts": int(row.attempts),
+                "completions": int(row.completions),
+                "passingYards": int(row.passing_yards),
+                "passingTouchdowns": int(row.passing_tds),
+                "interceptions": int(row.passing_interceptions),
+                "sacks": int(row.sacks_suffered),
                 "carries": int(row.carries),
                 "rushingYards": int(row.rushing_yards),
                 "rushingTouchdowns": int(row.rushing_tds),

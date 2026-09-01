@@ -6,13 +6,13 @@
   "additionalProperties": false,
   "required": ["schemaVersion", "data"],
   "properties": {
-    "schemaVersion": { "const": "1.1.0" },
+    "schemaVersion": { "const": "1.2.0" },
     "data": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["gameId", "playerId", "team", "opponent", "season", "week", "position", "played", "offensiveSnaps", "carries", "rushingYards", "rushingTouchdowns", "targets", "receptions", "receivingYards", "receivingTouchdowns", "fantasyPointsPpr"],
+        "required": ["gameId", "playerId", "team", "opponent", "season", "week", "position", "played", "offensiveSnaps", "passingAttempts", "completions", "passingYards", "passingTouchdowns", "interceptions", "sacks", "carries", "rushingYards", "rushingTouchdowns", "targets", "receptions", "receivingYards", "receivingTouchdowns", "fantasyPointsPpr"],
         "properties": {
           "gameId": { "type": "string" },
           "playerId": { "type": "string" },
@@ -20,9 +20,15 @@
           "opponent": { "type": "string" },
           "season": { "type": "integer" },
           "week": { "type": "integer", "minimum": 1, "maximum": 22 },
-          "position": { "enum": ["WR", "TE", "RB"] },
+          "position": { "enum": ["WR", "TE", "RB", "QB"] },
           "played": { "type": "boolean" },
           "offensiveSnaps": { "type": ["integer", "null"], "minimum": 0 },
+          "passingAttempts": { "type": "integer", "minimum": 0 },
+          "completions": { "type": "integer", "minimum": 0 },
+          "passingYards": { "type": "integer" },
+          "passingTouchdowns": { "type": "integer", "minimum": 0 },
+          "interceptions": { "type": "integer", "minimum": 0 },
+          "sacks": { "type": "integer", "minimum": 0 },
           "carries": { "type": "integer", "minimum": 0 },
           "rushingYards": { "type": "integer" },
           "rushingTouchdowns": { "type": "integer", "minimum": 0 },
