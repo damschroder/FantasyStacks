@@ -17,15 +17,17 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT / "data" / "raw"
 OUT_DIR = ROOT / "public" / "data" / "v1"
 SCHEMA_DIR = ROOT / "schema"
-SEASON = 2025
-SCHEMA_VERSION = "1.3.0"
+SEASONS = [2024, 2025]
+SEASON = max(SEASONS)
+SCHEMA_VERSION = "1.4.0"
 
-URLS = {
-    "stats": f"https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{SEASON}.parquet",
-    "snaps": f"https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_{SEASON}.parquet",
-    "pbp": f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.parquet",
-    "players": "https://github.com/nflverse/nflverse-data/releases/download/players/players.parquet",
-}
+URLS = {"players": "https://github.com/nflverse/nflverse-data/releases/download/players/players.parquet"}
+for season in SEASONS:
+    URLS.update({
+        f"stats_{season}": f"https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{season}.parquet",
+        f"snaps_{season}": f"https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_{season}.parquet",
+        f"pbp_{season}": f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{season}.parquet",
+    })
 CSV_URLS = {
     "ecr": "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_fpecr_latest.csv",
     "playerids": "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_playerids.csv",
@@ -93,23 +95,26 @@ def main() -> None:
     paths = {name: download(name, url) for name, url in URLS.items()}
     csv_paths = {name: download(name, url, ".csv") for name, url in CSV_URLS.items()}
 
-    stats = pd.read_parquet(paths["stats"])
-    snaps = pd.read_parquet(paths["snaps"])
+    stats = pd.concat([pd.read_parquet(paths[f"stats_{season}"]) for season in SEASONS], ignore_index=True)
+    snaps = pd.concat([pd.read_parquet(paths[f"snaps_{season}"]) for season in SEASONS], ignore_index=True)
     people = pd.read_parquet(paths["players"])
     rankings = pd.read_csv(csv_paths["ecr"])
     fantasy_ids = pd.read_csv(csv_paths["playerids"], low_memory=False)
-    pbp = pq.read_table(
-        paths["pbp"],
-        columns=["game_id", "season", "season_type", "week", "game_date", "posteam", "drive"],
-    ).to_pandas()
+    pbp = pd.concat([
+        pq.read_table(
+            paths[f"pbp_{season}"],
+            columns=["game_id", "season", "season_type", "week", "game_date", "posteam", "drive"],
+        ).to_pandas()
+        for season in SEASONS
+    ], ignore_index=True)
 
     stats = stats[
-        (stats["season"] == SEASON)
+        (stats["season"].isin(SEASONS))
         & (stats["season_type"] == "REG")
         & (stats["position"].isin(["WR", "TE", "RB", "QB"]))
     ].copy()
-    snaps = snaps[(snaps["season"] == SEASON) & (snaps["game_type"] == "REG")].copy()
-    pbp = pbp[(pbp["season"] == SEASON) & (pbp["season_type"] == "REG")].copy()
+    snaps = snaps[(snaps["season"].isin(SEASONS)) & (snaps["game_type"] == "REG")].copy()
+    pbp = pbp[(pbp["season"].isin(SEASONS)) & (pbp["season_type"] == "REG")].copy()
 
     rankings = rankings[
         (rankings["page_type"] == "redraft-overall")
@@ -171,7 +176,7 @@ def main() -> None:
         return home if team == away else away
 
     team_game_records = []
-    for row in team_games.sort_values(["week", "game_id", "team"]).itertuples(index=False):
+    for row in team_games.sort_values(["season", "week", "game_id", "team"]).itertuples(index=False):
         team_game_records.append(
             {
                 "gameId": str(row.game_id),
@@ -186,7 +191,7 @@ def main() -> None:
         )
 
     player_game_records = []
-    for row in stats.sort_values(["week", "game_id", "player_display_name"]).itertuples(index=False):
+    for row in stats.sort_values(["season", "week", "game_id", "player_display_name"]).itertuples(index=False):
         player_game_records.append(
             {
                 "gameId": str(row.game_id),
@@ -222,7 +227,7 @@ def main() -> None:
 
     used_ids = set(stats["player_id"].astype(str))
     people_by_gsis = people.drop_duplicates("gsis_id").set_index("gsis_id", drop=False)
-    latest_stats = stats.sort_values("week").drop_duplicates("player_id", keep="last").set_index("player_id")
+    latest_stats = stats.sort_values(["season", "week"]).drop_duplicates("player_id", keep="last").set_index("player_id")
     player_records = []
     for player_id in sorted(used_ids):
         stat = latest_stats.loc[player_id]
@@ -259,6 +264,7 @@ def main() -> None:
         "schemaVersion": SCHEMA_VERSION,
         "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "season": SEASON,
+        "seasons": SEASONS,
         "provider": {
             "name": "nflverse",
             "license": "CC BY 4.0; underlying NFL data remains subject to its owners' terms",
@@ -276,7 +282,7 @@ def main() -> None:
     write_json("manifest.json", manifest, pretty=True)
     print(
         f"Generated {len(player_records)} players, {len(player_game_records)} player-games, "
-        f"and {len(team_game_records)} team-games for {SEASON}."
+        f"and {len(team_game_records)} team-games for {SEASONS}."
     )
 
 

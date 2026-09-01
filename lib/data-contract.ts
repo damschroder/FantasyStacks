@@ -49,15 +49,16 @@ export interface TeamGame {
   offensivePlays: number | null;
 }
 
-export interface Envelope<T> { schemaVersion: '1.3.0'; data: T[] }
+export interface Envelope<T> { schemaVersion: '1.4.0'; data: T[] }
 
 export interface Manifest {
-  schemaVersion: '1.3.0';
+  schemaVersion: '1.4.0';
   generatedAt: string;
   season: number;
+  seasons: number[];
   provider: { name: 'nflverse'; license: string; sourceUrls: string[] };
   files: Record<'players' | 'playerGames' | 'teamGames', { path: string; records: number; sha256: string }>;
-  definitions: { offensivePossessions: string; offensivePlays: string; nullSemantics: string };
+  definitions: { offensivePossessions: string; offensivePlays: string; ecr: string; nullSemantics: string };
 }
 
 export interface Dataset {
@@ -74,10 +75,10 @@ export function parseDataset(
   teamGames: unknown,
 ): Dataset {
   const envelopes = [players, playerGames, teamGames] as Array<{ schemaVersion?: unknown; data?: unknown }>;
-  if (!manifest || typeof manifest !== 'object' || (manifest as { schemaVersion?: unknown }).schemaVersion !== '1.3.0') {
+  if (!manifest || typeof manifest !== 'object' || (manifest as { schemaVersion?: unknown }).schemaVersion !== '1.4.0') {
     throw new Error('Unsupported FantasyStacks manifest');
   }
-  if (envelopes.some((envelope) => envelope?.schemaVersion !== '1.3.0' || !Array.isArray(envelope?.data))) {
+  if (envelopes.some((envelope) => envelope?.schemaVersion !== '1.4.0' || !Array.isArray(envelope?.data))) {
     throw new Error('Unsupported FantasyStacks data envelope');
   }
   return {
@@ -88,7 +89,8 @@ export function parseDataset(
   };
 }
 
-export type WindowKey = 'week18' | 'last3' | 'last5' | 'season';
+export type WindowKey = 'lastWeek' | 'last3' | 'last5' | 'thisYear' | 'lastYear';
+export type VolumeMode = 'total' | 'perGame';
 export type SortKey =
   | 'ppr'
   | 'stackScore'
@@ -198,10 +200,13 @@ export function aggregateProfiles(
   minEcr: number,
   maxEcr: number,
   includeUnranked: boolean,
+  volumeMode: VolumeMode,
   sortKey: SortKey,
 ): Profile[] {
-  const maximumWeek = Math.max(...dataset.playerGames.map((game) => game.week));
-  const allowedWeeks = windowKey === 'week18'
+  const selectedSeason = windowKey === 'lastYear' ? dataset.manifest.season - 1 : dataset.manifest.season;
+  const seasonGames = dataset.playerGames.filter((game) => game.season === selectedSeason);
+  const maximumWeek = Math.max(...seasonGames.map((game) => game.week));
+  const allowedWeeks = windowKey === 'lastWeek'
     ? new Set([maximumWeek])
     : windowKey === 'last3'
       ? new Set([maximumWeek - 2, maximumWeek - 1, maximumWeek])
@@ -218,7 +223,7 @@ export function aggregateProfiles(
   const accumulators = new Map<string, Accumulator>();
 
   for (const game of dataset.playerGames) {
-    if (!game.played || (allowedWeeks && !allowedWeeks.has(game.week))) continue;
+    if (game.season !== selectedSeason || !game.played || (allowedWeeks && !allowedWeeks.has(game.week))) continue;
     if (position === 'FLEX' && game.position === 'QB') continue;
     if (position === 'RECEIVERS' && game.position !== 'WR' && game.position !== 'TE') continue;
     if (position !== 'FLEX' && position !== 'RECEIVERS' && game.position !== position) continue;
@@ -304,11 +309,13 @@ export function aggregateProfiles(
       };
     });
 
-  const volumeValues = (profile: Profile) => profile.position === 'QB'
+  const totalVolumeValues = (profile: Profile) => profile.position === 'QB'
     ? [profile.possessions, profile.teamPlays, profile.snaps, profile.passingAttempts, profile.negativePlays, profile.completions, profile.passingYards, profile.passingTouchdowns]
     : profile.position === 'RB'
       ? [profile.possessions, profile.teamPlays, profile.snaps, profile.opportunities, profile.receptions, profile.yards, profile.touchdowns]
       : [profile.possessions, profile.teamPlays, profile.snaps, profile.targets, profile.receptions, profile.yards, profile.touchdowns];
+  const volumeValues = (profile: Profile) => totalVolumeValues(profile).map((value) =>
+    volumeMode === 'perGame' ? safeRate(value, profile.games) : value);
   const efficiencyValues = (profile: Profile) => profile.position === 'QB'
     ? [profile.possessionPerGame, profile.playsPerPossession, profile.snapShare, profile.attemptsPerSnap, profile.cleanDropbackRate, profile.completionRate, profile.yardsPerAttempt, profile.touchdownsPerAttempt]
     : profile.position === 'RB'
@@ -364,10 +371,19 @@ export function aggregateProfiles(
     interceptionRate: (profile) => profile.interceptionRate,
     sackRate: (profile) => profile.sackRate,
   };
+  const volumeSortKeys = new Set<SortKey>([
+    'ppr', 'possessions', 'teamPlays', 'snaps', 'opportunities', 'carries', 'targets', 'receptions',
+    'yards', 'rushingYards', 'receivingYards', 'touchdowns', 'rushingTouchdowns', 'receivingTouchdowns',
+    'passingAttempts', 'completions', 'passingYards', 'passingTouchdowns', 'negativePlays', 'interceptions', 'sacks',
+  ]);
+  const sortValue = (profile: Profile, key: SortKey) => {
+    const value = selectors[key](profile);
+    return volumeMode === 'perGame' && volumeSortKeys.has(key) ? safeRate(value, profile.games) : value;
+  };
   return profiles.sort((a, b) =>
-    selectors[sortKey](b) - selectors[sortKey](a)
-    || b.ppr - a.ppr
-    || b.targets - a.targets
+    sortValue(b, sortKey) - sortValue(a, sortKey)
+    || sortValue(b, 'ppr') - sortValue(a, 'ppr')
+    || sortValue(b, 'targets') - sortValue(a, 'targets')
     || a.name.localeCompare(b.name));
 }
 

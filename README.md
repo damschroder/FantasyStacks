@@ -22,6 +22,8 @@ Layer width is the player’s percentile for raw volume among the currently qual
 
 The two-sided FP ECR control filters the cohort by the current FantasyPros redraft-overall expert consensus ranking distributed through nflverse/DynastyProcess. Its NR endpoint preserves players without a current ranking. Stack geometry recalculates within the selected ECR range.
 
+Time windows cover the latest week, trailing three and five games, the 2025 season, and the 2024 season. The independent Total / Per game setting controls displayed layer volume, width percentiles, PPR, volume sorting, and stack score without changing transition-rate heights.
+
 ## Run locally
 
 ```powershell
