@@ -4,11 +4,12 @@
   "title": "FantasyStacks manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "generatedAt", "season", "provider", "files", "definitions"],
+  "required": ["schemaVersion", "generatedAt", "season", "seasons", "provider", "files", "definitions"],
   "properties": {
-    "schemaVersion": { "const": "1.3.0" },
+    "schemaVersion": { "const": "1.4.0" },
     "generatedAt": { "type": "string", "format": "date-time" },
     "season": { "type": "integer", "minimum": 1999 },
+    "seasons": { "type": "array", "items": { "type": "integer", "minimum": 1999 }, "minItems": 2, "uniqueItems": true },
     "provider": {
       "type": "object",
       "additionalProperties": false,

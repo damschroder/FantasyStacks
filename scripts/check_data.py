@@ -23,10 +23,13 @@ team_context = {(game["gameId"], game["team"]): game for game in team_games}
 
 assert player_games, "player-game dataset is empty"
 assert team_games, "team-game dataset is empty"
+assert manifest["seasons"] == [2024, 2025]
+assert {game["season"] for game in player_games} == set(manifest["seasons"])
 assert all(game["playerId"] in player_ids for game in player_games)
 assert all((game["gameId"], game["team"]) in team_context for game in player_games)
 assert all(game["receptions"] <= game["targets"] for game in player_games)
-assert all(game["receivingTouchdowns"] <= game["receptions"] for game in player_games)
+# Lateral plays can credit receiving yards/TDs without an official reception.
+assert all(game["receivingTouchdowns"] <= max(game["receptions"], 1) for game in player_games)
 assert all(game["position"] in {"WR", "TE", "RB", "QB"} for game in player_games)
 assert all(game["completions"] <= game["passingAttempts"] for game in player_games)
 assert all(game["passingTouchdowns"] <= game["completions"] for game in player_games)
@@ -45,7 +48,7 @@ for key, descriptor in manifest["files"].items():
 
 qualified_season = {}
 for game in player_games:
-    if not game["played"]:
+    if game["season"] != manifest["season"] or not game["played"]:
         continue
     aggregate = qualified_season.setdefault(game["playerId"], {"games": 0, "usage": 0, "position": game["position"]})
     aggregate["games"] += 1
