@@ -42,6 +42,20 @@ const SORT_LABELS: Record<SortKey, string> = {
   touchdownsPerCatch: 'TDs / catch',
   yardsPerTouch: 'Yards / touch',
   touchdownsPerTouch: 'TDs / touch',
+  passingAttempts: 'Pass attempts',
+  completions: 'Completions',
+  passingYards: 'Passing yards',
+  passingTouchdowns: 'Passing TDs',
+  negativePlays: 'Sacks + interceptions',
+  interceptions: 'Interceptions',
+  sacks: 'Sacks',
+  attemptsPerSnap: 'Attempts / snap',
+  completionRate: 'Completion rate',
+  cleanDropbackRate: 'Clean dropback rate',
+  yardsPerAttempt: 'Yards / attempt',
+  touchdownsPerAttempt: 'TDs / attempt',
+  interceptionRate: 'Interception rate',
+  sackRate: 'Sack rate',
 };
 const RECEIVER_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
@@ -59,6 +73,11 @@ const FLEX_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'RB + composite layers', keys: ['opportunities', 'carries', 'yards', 'rushingYards', 'touchdowns', 'rushingTouchdowns'] },
   { label: 'Shared transitions', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch'] },
   { label: 'RB + composite transitions', keys: ['opportunitiesPerSnap', 'yardsPerTouch', 'touchdownsPerTouch'] },
+];
+const QB_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
+  { label: 'Overview', keys: ['ppr', 'stackScore'] },
+  { label: 'Stack layers · volume', keys: ['possessions', 'teamPlays', 'snaps', 'passingAttempts', 'negativePlays', 'sacks', 'interceptions', 'completions', 'passingYards', 'passingTouchdowns'] },
+  { label: 'Transitions · efficiency', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'attemptsPerSnap', 'cleanDropbackRate', 'completionRate', 'yardsPerAttempt', 'touchdownsPerAttempt', 'sackRate', 'interceptionRate'] },
 ];
 
 const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
@@ -121,7 +140,22 @@ function PlayerStack({
       split: { primary: profile.rushingTouchdowns, secondary: profile.receivingTouchdowns, description: `${integer.format(profile.rushingTouchdowns)} rushing · ${integer.format(profile.receivingTouchdowns)} receiving TDs` },
     },
   ];
-  const layers = profile.position === 'RB' ? runningBackLayers : receiverLayers;
+  const quarterbackLayers: StackLayer[] = [
+    { label: 'Possessions', value: integer.format(profile.possessions), rate: `${decimal.format(profile.possessionPerGame)} / game` },
+    { label: 'Team plays', value: integer.format(profile.teamPlays), rate: `${decimal.format(profile.playsPerPossession)} / possession` },
+    { label: 'Snaps', value: integer.format(profile.snaps), rate: `${percent(profile.snapShare)} snap share` },
+    { label: 'Passes', value: integer.format(profile.passingAttempts), rate: `${percent(profile.attemptsPerSnap)} / snap` },
+    {
+      label: 'Sacks + INT',
+      value: integer.format(profile.negativePlays),
+      rate: `${percent(profile.cleanDropbackRate)} clean`,
+      split: { primary: profile.sacks, secondary: profile.interceptions, description: `${integer.format(profile.sacks)} sacks · ${integer.format(profile.interceptions)} interceptions` },
+    },
+    { label: 'Completions', value: integer.format(profile.completions), rate: `${percent(profile.completionRate)} complete` },
+    { label: 'Pass yards', value: integer.format(profile.passingYards), rate: `${decimal.format(profile.yardsPerAttempt)} / attempt` },
+    { label: 'Pass TD', value: integer.format(profile.passingTouchdowns), rate: `${percent(profile.touchdownsPerAttempt)} / attempt` },
+  ];
+  const layers = profile.position === 'QB' ? quarterbackLayers : profile.position === 'RB' ? runningBackLayers : receiverLayers;
   const color = TEAM_COLORS[profile.team] ?? '#6e777a';
   const logo = TEAM_LOGOS[profile.team];
   return (
@@ -141,6 +175,7 @@ function PlayerStack({
           <h2>{profile.name}</h2>
           <p className="ppr-line"><strong>{decimal.format(profile.ppr)}</strong> PPR &nbsp; <span>{decimal.format(profile.ppr / profile.games)} / game</span></p>
           {profile.position === 'RB' && <p className="role-legend"><span className="rush-key">RUSH / TOUCH</span><span className="receive-key">TARGET / RECEIVE</span></p>}
+          {profile.position === 'QB' && <p className="role-legend"><span className="sack-key">SACKS</span><span className="interception-key">INTERCEPTIONS</span></p>}
         </div>
         <span className="rank">{String(rank).padStart(2, '0')}</span>
       </div>
@@ -201,8 +236,8 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
   );
   const displayProfiles = compareMode ? comparisonProfiles : profiles;
   const visibleProfiles = compareMode ? displayProfiles : displayProfiles.slice(0, shown);
-  const sortGroups = position === 'FLEX' ? FLEX_SORT_GROUPS : position === 'RB' ? RB_SORT_GROUPS : RECEIVER_SORT_GROUPS;
-  const usageOptions = position === 'RB' || position === 'FLEX' ? [0, 2, 4, 6, 8, 10, 12, 15, 20] : [0, 1, 2, 3, 4, 5, 6];
+  const sortGroups = position === 'QB' ? QB_SORT_GROUPS : position === 'FLEX' ? FLEX_SORT_GROUPS : position === 'RB' ? RB_SORT_GROUPS : RECEIVER_SORT_GROUPS;
+  const usageOptions = position === 'QB' ? [0, 5, 10, 15, 20, 25, 30, 35, 40, 45] : position === 'RB' || position === 'FLEX' ? [0, 2, 4, 6, 8, 10, 12, 15, 20] : [0, 1, 2, 3, 4, 5, 6];
 
   const changeWindow = (next: WindowKey) => {
     setWindowKey(next);
@@ -250,7 +285,7 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
         <div className="control-group position-group">
           <span className="control-label">POSITION</span>
           <div className="segmented compact">
-            {(['FLEX', 'RECEIVERS', 'WR', 'TE', 'RB'] as const).map((value) => (
+            {(['FLEX', 'RECEIVERS', 'WR', 'TE', 'RB', 'QB'] as const).map((value) => (
               <button key={value} className={position === value ? 'active' : ''} onClick={() => changePosition(value)} title={value === 'FLEX' ? 'Running backs, wide receivers, and tight ends' : undefined}>
                 {value === 'RECEIVERS' ? 'WR + TE' : value}
               </button>
@@ -267,7 +302,7 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
         <section className="filter-panel" aria-label="Minimum qualification filters">
           <label>TEAM<select value={team} onChange={(event) => setTeam(event.target.value)}><option value="ALL">All teams</option>{teams.map((value) => <option key={value}>{value}</option>)}</select></label>
           <label>MIN. GAMES<select value={minGames} onChange={(event) => setMinGames(Number(event.target.value))}>{[1, 2, 3, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <label>MIN. {position === 'RB' || position === 'FLEX' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label>MIN. {position === 'QB' ? 'PASSES' : position === 'RB' || position === 'FLEX' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <button onClick={() => { setTeam('ALL'); setMinGames(windowKey === 'season' ? 6 : 1); setMinTargets(2); }}>Reset filters</button>
         </section>
       )}
@@ -347,6 +382,7 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
               <div><strong>HEIGHT</strong><p>How efficiently one stage converted into the next. Taller layers indicate a stronger rate.</p></div>
               <div><strong>BULGES</strong><p>Useful signal, not a flaw. A wide yardage tier above modest catches identifies explosive production.</p></div>
               <div><strong>RB COLOR</strong><p>Team color shows rushing touches and production. The highlight color shows targets and receiving production.</p></div>
+              <div><strong>QB COLOR</strong><p>The split loss layer separates sacks in team color from interceptions in the highlight color. Its height rewards clean dropbacks.</p></div>
               <div><strong>LABELS</strong><p>The unnormalized truth: raw totals and the exact rate that controls each layer’s height.</p></div>
             </div>
             <button className="modal-done" onClick={() => setGuideOpen(false)}>Explore the stacks</button>

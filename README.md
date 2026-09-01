@@ -1,6 +1,6 @@
 # FantasyStacks
 
-FantasyStacks is an experimental fantasy-football visualization for comparing WR, TE, and RB opportunity-to-production profiles.
+FantasyStacks is an experimental fantasy-football visualization for comparing WR, TE, RB, and QB opportunity-to-production profiles.
 
 Receiver stacks have seven layers:
 
@@ -13,6 +13,10 @@ Receiver stacks have seven layers:
 7. Receiving touchdowns
 
 Running-back stacks preserve the same team-context base, then show touches plus targets, catches, scrimmage yards, and total touchdowns. Rushing volume uses the team color; target and receiving volume use the contrasting highlight color.
+
+The FLEX view combines RB, WR, and TE stacks in one qualified field while preserving each position's stack grammar.
+
+Quarterback stacks use the same team-context base, then show pass attempts, sacks plus interceptions, completions, passing yards, and passing touchdowns. The loss-event layer splits sacks from interceptions by color; its height represents the percentage of dropbacks that avoided either outcome.
 
 Layer width is the player’s percentile for raw volume among the currently qualified cohort. Layer height is the percentile of the transition rate into that layer. Geometry is calculated after filtering; it is never stored in the source dataset.
 

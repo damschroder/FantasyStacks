@@ -78,6 +78,8 @@ h1 { margin: 0; max-width: 980px; font-size: clamp(34px, 3.9vw, 56px); line-heig
 .ppr-line span { font-weight: 400; }
 .role-legend { display: flex; gap: 12px; margin: 7px 0 0; font: 700 7px/1 monospace; letter-spacing: .08em; color: var(--muted); }
 .role-legend span::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border: 1px solid rgba(21,29,33,.35); vertical-align: -1px; }
+.sack-key::before { background: var(--accent); }
+.interception-key::before { background: var(--acid); }
 .rush-key::before { background: var(--accent, #6e777a); }
 .receive-key::before { background: var(--acid); }
 .rank { color: #b6b3ab; font: 400 31px/1 monospace; }
@@ -93,6 +95,7 @@ h1 { margin: 0; max-width: 980px; font-size: clamp(34px, 3.9vw, 56px); line-heig
 .tier-4 { --tier-strength: 11%; }
 .tier-5 { --tier-strength: 4%; }
 .tier-6 { --tier-strength: 0%; }
+.tier-7 { --tier-strength: 0%; }
 .tier span { font: 700 9px/1 monospace; letter-spacing: .09em; text-transform: uppercase; }
 .tier strong { font-size: clamp(15px, 1.4vw, 21px); letter-spacing: -.04em; }
 .rate-label { position: absolute; z-index: 2; top: -10px; left: 50%; transform: translateX(-50%); background: var(--paper); border: 1px solid var(--ink); border-radius: 999px; padding: 3px 7px; font: 700 9px/1 monospace; white-space: nowrap; }
