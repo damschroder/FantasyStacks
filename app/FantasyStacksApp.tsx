@@ -58,28 +58,29 @@ const SORT_LABELS: Record<SortKey, string> = {
   touchdownsPerAttempt: 'TDs / attempt',
   interceptionRate: 'Interception rate',
   sackRate: 'Sack rate',
+  fantasyPointsPerOpportunity: 'Fantasy points / opportunity',
 };
 const RECEIVER_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
   { label: 'Stack layers · volume', keys: ['possessions', 'teamPlays', 'snaps', 'targets', 'receptions', 'yards', 'touchdowns'] },
-  { label: 'Transitions · efficiency', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch'] },
+  { label: 'Transitions · efficiency', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch', 'fantasyPointsPerOpportunity'] },
 ];
 const RB_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
   { label: 'Stack layers · volume', keys: ['possessions', 'teamPlays', 'snaps', 'opportunities', 'carries', 'targets', 'receptions', 'yards', 'rushingYards', 'receivingYards', 'touchdowns', 'rushingTouchdowns', 'receivingTouchdowns'] },
-  { label: 'Transitions · efficiency', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'opportunitiesPerSnap', 'catchRate', 'yardsPerTouch', 'touchdownsPerTouch'] },
+  { label: 'Transitions · efficiency', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'opportunitiesPerSnap', 'catchRate', 'yardsPerTouch', 'touchdownsPerTouch', 'fantasyPointsPerOpportunity'] },
 ];
 const FLEX_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
   { label: 'Shared layers · volume', keys: ['possessions', 'teamPlays', 'snaps', 'targets', 'receptions', 'receivingYards', 'receivingTouchdowns'] },
   { label: 'RB + composite layers', keys: ['opportunities', 'carries', 'yards', 'rushingYards', 'touchdowns', 'rushingTouchdowns'] },
-  { label: 'Shared transitions', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch'] },
+  { label: 'Shared transitions', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch', 'fantasyPointsPerOpportunity'] },
   { label: 'RB + composite transitions', keys: ['opportunitiesPerSnap', 'yardsPerTouch', 'touchdownsPerTouch'] },
 ];
 const QB_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
   { label: 'Stack layers · volume', keys: ['possessions', 'teamPlays', 'snaps', 'passingAttempts', 'negativePlays', 'sacks', 'interceptions', 'completions', 'passingYards', 'passingTouchdowns'] },
-  { label: 'Transitions · efficiency', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'attemptsPerSnap', 'cleanDropbackRate', 'completionRate', 'yardsPerAttempt', 'touchdownsPerAttempt', 'sackRate', 'interceptionRate'] },
+  { label: 'Transitions · efficiency', keys: ['possessionPerGame', 'playsPerPossession', 'snapShare', 'attemptsPerSnap', 'cleanDropbackRate', 'completionRate', 'yardsPerAttempt', 'touchdownsPerAttempt', 'fantasyPointsPerOpportunity', 'sackRate', 'interceptionRate'] },
 ];
 
 const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
@@ -123,6 +124,7 @@ function PlayerStack({
     { label: 'Catches', value: volume(profile.receptions), rate: `${percent(profile.catchRate)} caught` },
     { label: 'Yards', value: volume(profile.yards), rate: `${decimal.format(profile.yardsPerCatch)} / catch` },
     { label: 'TD', value: volume(profile.touchdowns), rate: `${percent(profile.touchdownsPerCatch)} / catch` },
+    { label: 'Fantasy pts', value: volume(profile.ppr), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / target` },
   ];
   const runningBackLayers: StackLayer[] = [
     { label: 'Possessions', value: volume(profile.possessions), rate: `${decimal.format(profile.possessionPerGame)} / game` },
@@ -147,6 +149,7 @@ function PlayerStack({
       rate: `${percent(profile.touchdownsPerTouch)} / touch`,
       split: { primary: profile.rushingTouchdowns, secondary: profile.receivingTouchdowns, description: `${splitValue(profile.rushingTouchdowns, 'rushing TDs')} · ${splitValue(profile.receivingTouchdowns, 'receiving TDs')}` },
     },
+    { label: 'Fantasy pts', value: volume(profile.ppr), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / opportunity` },
   ];
   const quarterbackLayers: StackLayer[] = [
     { label: 'Possessions', value: volume(profile.possessions), rate: `${decimal.format(profile.possessionPerGame)} / game` },
@@ -162,6 +165,7 @@ function PlayerStack({
     { label: 'Completions', value: volume(profile.completions), rate: `${percent(profile.completionRate)} complete` },
     { label: 'Pass yards', value: volume(profile.passingYards), rate: `${decimal.format(profile.yardsPerAttempt)} / attempt` },
     { label: 'Pass TD', value: volume(profile.passingTouchdowns), rate: `${percent(profile.touchdownsPerAttempt)} / attempt` },
+    { label: 'Fantasy pts', value: volume(profile.ppr), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / attempt` },
   ];
   const layers = profile.position === 'QB' ? quarterbackLayers : profile.position === 'RB' ? runningBackLayers : receiverLayers;
   const color = TEAM_COLORS[profile.team] ?? '#6e777a';
@@ -179,9 +183,9 @@ function PlayerStack({
             <span>{profile.position}</span>
             <span aria-hidden="true">·</span>
             <span>{profile.games} GAMES</span>
+            {profile.ecr !== null && <><span aria-hidden="true">·</span><span>FP ECR {decimal.format(profile.ecr)}</span></>}
           </p>
           <h2>{profile.name}</h2>
-          <p className="ppr-line"><strong>{decimal.format(perGame ? profile.ppr / profile.games : profile.ppr)}</strong> {perGame ? 'PPR / GAME' : 'PPR TOTAL'}{profile.ecr !== null && <em>FP ECR {decimal.format(profile.ecr)}</em>}</p>
           {profile.position === 'RB' && <p className="role-legend"><span className="rush-key">RUSH / TOUCH</span><span className="receive-key">TARGET / RECEIVE</span></p>}
           {profile.position === 'QB' && <p className="role-legend"><span className="sack-key">SACKS</span><span className="interception-key">INTERCEPTIONS</span></p>}
         </div>

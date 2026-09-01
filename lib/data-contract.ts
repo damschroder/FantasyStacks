@@ -130,7 +130,8 @@ export type SortKey =
   | 'yardsPerAttempt'
   | 'touchdownsPerAttempt'
   | 'interceptionRate'
-  | 'sackRate';
+  | 'sackRate'
+  | 'fantasyPointsPerOpportunity';
 
 export interface Profile {
   playerId: string;
@@ -177,6 +178,7 @@ export interface Profile {
   touchdownsPerAttempt: number;
   interceptionRate: number;
   sackRate: number;
+  fantasyPointsPerOpportunity: number;
   widths: number[];
   heights: number[];
   stackScore: number;
@@ -305,22 +307,23 @@ export function aggregateProfiles(
         touchdownsPerAttempt: safeRate(profile.passingTouchdowns, profile.passingAttempts),
         interceptionRate: safeRate(profile.interceptions, profile.passingAttempts),
         sackRate: safeRate(profile.sacks, dropbacks),
+        fantasyPointsPerOpportunity: safeRate(profile.ppr, opportunities),
         widths: [], heights: [], stackScore: 0,
       };
     });
 
   const totalVolumeValues = (profile: Profile) => profile.position === 'QB'
-    ? [profile.possessions, profile.teamPlays, profile.snaps, profile.passingAttempts, profile.negativePlays, profile.completions, profile.passingYards, profile.passingTouchdowns]
+    ? [profile.possessions, profile.teamPlays, profile.snaps, profile.passingAttempts, profile.negativePlays, profile.completions, profile.passingYards, profile.passingTouchdowns, profile.ppr]
     : profile.position === 'RB'
-      ? [profile.possessions, profile.teamPlays, profile.snaps, profile.opportunities, profile.receptions, profile.yards, profile.touchdowns]
-      : [profile.possessions, profile.teamPlays, profile.snaps, profile.targets, profile.receptions, profile.yards, profile.touchdowns];
+      ? [profile.possessions, profile.teamPlays, profile.snaps, profile.opportunities, profile.receptions, profile.yards, profile.touchdowns, profile.ppr]
+      : [profile.possessions, profile.teamPlays, profile.snaps, profile.targets, profile.receptions, profile.yards, profile.touchdowns, profile.ppr];
   const volumeValues = (profile: Profile) => totalVolumeValues(profile).map((value) =>
     volumeMode === 'perGame' ? safeRate(value, profile.games) : value);
   const efficiencyValues = (profile: Profile) => profile.position === 'QB'
-    ? [profile.possessionPerGame, profile.playsPerPossession, profile.snapShare, profile.attemptsPerSnap, profile.cleanDropbackRate, profile.completionRate, profile.yardsPerAttempt, profile.touchdownsPerAttempt]
+    ? [profile.possessionPerGame, profile.playsPerPossession, profile.snapShare, profile.attemptsPerSnap, profile.cleanDropbackRate, profile.completionRate, profile.yardsPerAttempt, profile.touchdownsPerAttempt, profile.fantasyPointsPerOpportunity]
     : profile.position === 'RB'
-      ? [profile.possessionPerGame, profile.playsPerPossession, profile.snapShare, profile.opportunitiesPerSnap, profile.catchRate, profile.yardsPerTouch, profile.touchdownsPerTouch]
-      : [profile.possessionPerGame, profile.playsPerPossession, profile.snapShare, profile.targetsPerSnap, profile.catchRate, profile.yardsPerCatch, profile.touchdownsPerCatch];
+      ? [profile.possessionPerGame, profile.playsPerPossession, profile.snapShare, profile.opportunitiesPerSnap, profile.catchRate, profile.yardsPerTouch, profile.touchdownsPerTouch, profile.fantasyPointsPerOpportunity]
+      : [profile.possessionPerGame, profile.playsPerPossession, profile.snapShare, profile.targetsPerSnap, profile.catchRate, profile.yardsPerCatch, profile.touchdownsPerCatch, profile.fantasyPointsPerOpportunity];
   const volumeMatrix = profiles.map(volumeValues);
   const efficiencyMatrix = profiles.map(efficiencyValues);
   for (const profile of profiles) {
@@ -370,6 +373,7 @@ export function aggregateProfiles(
     touchdownsPerAttempt: (profile) => profile.touchdownsPerAttempt,
     interceptionRate: (profile) => profile.interceptionRate,
     sackRate: (profile) => profile.sackRate,
+    fantasyPointsPerOpportunity: (profile) => profile.fantasyPointsPerOpportunity,
   };
   const volumeSortKeys = new Set<SortKey>([
     'ppr', 'possessions', 'teamPlays', 'snaps', 'opportunities', 'carries', 'targets', 'receptions',
