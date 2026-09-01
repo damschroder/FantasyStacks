@@ -83,7 +83,7 @@ h1 { margin: 0; max-width: 980px; font-size: clamp(34px, 3.9vw, 56px); line-heig
 .rank { color: #b6b3ab; font: 400 31px/1 monospace; }
 .stack { display: flex; flex-direction: column; justify-content: flex-end; min-height: 405px; padding-top: 20px; }
 .tier-wrap { position: relative; display: flex; justify-content: center; }
-.tier { height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 clamp(15px, 2vw, 27px); border-bottom: 1px solid rgba(21,29,33,.42); background: color-mix(in srgb, var(--accent) calc(31% + var(--tier-strength, 0%)), #e9e7df); clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%); }
+.tier { min-width: 0; height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 8px; overflow: hidden; padding: 0 clamp(15px, 2vw, 27px); border-bottom: 1px solid rgba(21,29,33,.42); background: color-mix(in srgb, var(--accent) calc(31% + var(--tier-strength, 0%)), #e9e7df); clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%); }
 .tier.split-tier { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) calc(31% + var(--tier-strength, 0%)), #e9e7df) 0 var(--split), color-mix(in srgb, var(--acid) calc(55% + var(--tier-strength, 0%)), #e9e7df) var(--split) 100%); }
 .tier.receiving-tier { background: color-mix(in srgb, var(--acid) calc(55% + var(--tier-strength, 0%)), #e9e7df); }
 .tier-0 { --tier-strength: 40%; height: 46px; }
