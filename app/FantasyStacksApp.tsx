@@ -239,7 +239,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const [compareMode, setCompareMode] = useState(false);
   const [density, setDensity] = useState(8);
   const [minEcr, setMinEcr] = useState(1);
-  const [maxEcr, setMaxEcr] = useState(ecrUnrankedSentinel);
+  const [maxEcr, setMaxEcr] = useState(Math.min(225, rankedEcrCeiling));
   const [shown, setShown] = useState(24);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
