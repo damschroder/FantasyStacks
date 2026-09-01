@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import {
   aggregateProfiles,
   Dataset,
+  parseDataset,
   PositionFilter,
   Profile,
   SortKey,
@@ -218,7 +219,7 @@ function PlayerStack({
   );
 }
 
-export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
+function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const rankedEcrCeiling = Math.ceil(Math.max(1, ...dataset.players.map((player) => player.ecr ?? 0)) / 25) * 25;
   const ecrUnrankedSentinel = rankedEcrCeiling + 1;
   const [windowKey, setWindowKey] = useState<WindowKey>('thisYear');
@@ -444,4 +445,34 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
       )}
     </main>
   );
+}
+
+export default function FantasyStacksApp() {
+  const [dataset, setDataset] = useState<Dataset | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const files = ['manifest.json', 'players.json', 'player-games.json', 'team-games.json'];
+    Promise.all(files.map(async (file) => {
+      const response = await fetch(`./data/v1/${file}`, { signal: controller.signal });
+      if (!response.ok) throw new Error(`Unable to load ${file} (${response.status})`);
+      return response.json() as Promise<unknown>;
+    }))
+      .then(([manifest, players, playerGames, teamGames]) => {
+        setDataset(parseDataset(manifest, players, playerGames, teamGames));
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : 'Unable to load FantasyStacks data');
+      });
+    return () => controller.abort();
+  }, []);
+
+  if (loadError) {
+    return <main className="data-state"><strong>FantasyStacks data could not be loaded.</strong><p>{loadError}</p><button onClick={() => window.location.reload()}>Try again</button></main>;
+  }
+  if (!dataset) {
+    return <main className="data-state" aria-live="polite"><BrandMark /><strong>Building the stacks…</strong><p>Loading two seasons of verified performance data.</p></main>;
+  }
+  return <FantasyStacksLoaded dataset={dataset} />;
 }
