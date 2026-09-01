@@ -8,6 +8,7 @@ import {
   parseDataset,
   PositionFilter,
   Profile,
+  ScoringMode,
   SortKey,
   TEAM_COLORS,
   TEAM_LOGOS,
@@ -19,7 +20,7 @@ const WINDOW_LABELS: Record<WindowKey, string> = {
   lastWeek: 'Last week', last3: 'Last 3', last5: 'Last 5', thisYear: 'This year', lastYear: 'Last year',
 };
 const SORT_LABELS: Record<SortKey, string> = {
-  ppr: 'PPR points',
+  ppr: 'Fantasy points',
   stackScore: 'Stack score',
   possessions: 'Team possessions',
   teamPlays: 'Team plays',
@@ -124,7 +125,7 @@ function PlayerStack({
     { label: 'Catches', value: volume(profile.receptions), rate: `${percent(profile.catchRate)} caught` },
     { label: 'Yards', value: volume(profile.yards), rate: `${decimal.format(profile.yardsPerCatch)} / catch` },
     { label: 'TD', value: volume(profile.touchdowns), rate: `${percent(profile.touchdownsPerCatch)} / catch` },
-    { label: 'Fantasy pts', value: volume(profile.ppr), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / target` },
+    { label: 'Fantasy pts', value: volume(profile.fantasyPoints), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / target` },
   ];
   const runningBackLayers: StackLayer[] = [
     { label: 'Possessions', value: volume(profile.possessions), rate: `${decimal.format(profile.possessionPerGame)} / game` },
@@ -149,7 +150,7 @@ function PlayerStack({
       rate: `${percent(profile.touchdownsPerTouch)} / touch`,
       split: { primary: profile.rushingTouchdowns, secondary: profile.receivingTouchdowns, description: `${splitValue(profile.rushingTouchdowns, 'rushing TDs')} · ${splitValue(profile.receivingTouchdowns, 'receiving TDs')}` },
     },
-    { label: 'Fantasy pts', value: volume(profile.ppr), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / opportunity` },
+    { label: 'Fantasy pts', value: volume(profile.fantasyPoints), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / opportunity` },
   ];
   const quarterbackLayers: StackLayer[] = [
     { label: 'Possessions', value: volume(profile.possessions), rate: `${decimal.format(profile.possessionPerGame)} / game` },
@@ -165,7 +166,7 @@ function PlayerStack({
     { label: 'Completions', value: volume(profile.completions), rate: `${percent(profile.completionRate)} complete` },
     { label: 'Pass yards', value: volume(profile.passingYards), rate: `${decimal.format(profile.yardsPerAttempt)} / attempt` },
     { label: 'Pass TD', value: volume(profile.passingTouchdowns), rate: `${percent(profile.touchdownsPerAttempt)} / attempt` },
-    { label: 'Fantasy pts', value: volume(profile.ppr), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / attempt` },
+    { label: 'Fantasy pts', value: volume(profile.fantasyPoints), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / attempt` },
   ];
   const layers = profile.position === 'QB' ? quarterbackLayers : profile.position === 'RB' ? runningBackLayers : receiverLayers;
   const color = TEAM_COLORS[profile.team] ?? '#6e777a';
@@ -228,6 +229,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const ecrUnrankedSentinel = rankedEcrCeiling + 1;
   const [windowKey, setWindowKey] = useState<WindowKey>('thisYear');
   const [volumeMode, setVolumeMode] = useState<VolumeMode>('total');
+  const [scoringMode, setScoringMode] = useState<ScoringMode>('full');
   const [position, setPosition] = useState<PositionFilter>('RECEIVERS');
   const [team, setTeam] = useState('ALL');
   const [minGames, setMinGames] = useState(6);
@@ -244,8 +246,8 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 
   const teams = useMemo(() => [...new Set(dataset.playerGames.map((game) => game.team))].sort(), [dataset]);
   const profiles = useMemo(
-    () => aggregateProfiles(dataset, windowKey, position, team, minGames, minTargets, minEcr, Math.min(maxEcr, rankedEcrCeiling), maxEcr === ecrUnrankedSentinel, volumeMode, sortKey),
-    [dataset, windowKey, position, team, minGames, minTargets, minEcr, maxEcr, rankedEcrCeiling, ecrUnrankedSentinel, volumeMode, sortKey],
+    () => aggregateProfiles(dataset, windowKey, position, team, minGames, minTargets, minEcr, Math.min(maxEcr, rankedEcrCeiling), maxEcr === ecrUnrankedSentinel, volumeMode, scoringMode, sortKey),
+    [dataset, windowKey, position, team, minGames, minTargets, minEcr, maxEcr, rankedEcrCeiling, ecrUnrankedSentinel, volumeMode, scoringMode, sortKey],
   );
   const comparisonProfiles = useMemo(
     () => profiles.filter((profile) => pinned.includes(profile.playerId)),
@@ -305,6 +307,16 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
             {(['total', 'perGame'] as const).map((value) => (
               <button key={value} className={volumeMode === value ? 'active' : ''} onClick={() => { setVolumeMode(value); setShown(density * 3); }}>
                 {value === 'total' ? 'Total' : 'Per game'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="control-group scoring-group">
+          <span className="control-label">PPR</span>
+          <div className="segmented compact">
+            {(['full', 'half', 'off'] as const).map((value) => (
+              <button key={value} className={scoringMode === value ? 'active' : ''} onClick={() => { setScoringMode(value); setShown(density * 3); }}>
+                {value === 'full' ? 'Full' : value === 'half' ? 'Half' : 'Off'}
               </button>
             ))}
           </div>
@@ -440,7 +452,8 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               <div><strong>RB COLOR</strong><p>Team color shows rushing touches and production. The highlight color shows targets and receiving production.</p></div>
               <div><strong>QB COLOR</strong><p>The split loss layer separates sacks in team color from interceptions in the highlight color. Its height rewards clean dropbacks.</p></div>
               <div><strong>FP ECR RANGE</strong><p>Limits the field to the current FantasyPros redraft consensus range. The upper NR endpoint retains players without a current ranking.</p></div>
-              <div><strong>NORMALIZE</strong><p>Total compares accumulated volume. Per game normalizes layer values, widths, PPR, and volume sorting for every selected time window.</p></div>
+              <div><strong>NORMALIZE</strong><p>Total compares accumulated volume. Per game normalizes layer values, widths, fantasy points, and volume sorting for every selected time window.</p></div>
+              <div><strong>PPR SCORING</strong><p>Full adds 1 point per catch, Half adds 0.5, and Off removes the reception bonus. Fantasy-point geometry and sorting update immediately.</p></div>
               <div><strong>LABELS</strong><p>The unnormalized truth: raw totals and the exact rate that controls each layer’s height.</p></div>
             </div>
             <button className="modal-done" onClick={() => setGuideOpen(false)}>Explore the stacks</button>

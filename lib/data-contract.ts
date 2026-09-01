@@ -91,6 +91,7 @@ export function parseDataset(
 
 export type WindowKey = 'lastWeek' | 'last3' | 'last5' | 'thisYear' | 'lastYear';
 export type VolumeMode = 'total' | 'perGame';
+export type ScoringMode = 'full' | 'half' | 'off';
 export type SortKey =
   | 'ppr'
   | 'stackScore'
@@ -161,6 +162,7 @@ export interface Profile {
   touchdowns: number;
   negativePlays: number;
   ppr: number;
+  fantasyPoints: number;
   possessionPerGame: number;
   playsPerPossession: number;
   snapShare: number;
@@ -203,6 +205,7 @@ export function aggregateProfiles(
   maxEcr: number,
   includeUnranked: boolean,
   volumeMode: VolumeMode,
+  scoringMode: ScoringMode,
   sortKey: SortKey,
 ): Profile[] {
   const selectedSeason = windowKey === 'lastYear' ? dataset.manifest.season - 1 : dataset.manifest.season;
@@ -284,8 +287,11 @@ export function aggregateProfiles(
       const actualTouches = profile.carries + profile.receptions;
       const negativePlays = profile.sacks + profile.interceptions;
       const dropbacks = profile.passingAttempts + profile.sacks;
+      const receptionPenalty = scoringMode === 'full' ? 0 : scoringMode === 'half' ? profile.receptions * 0.5 : profile.receptions;
+      const fantasyPoints = profile.ppr - receptionPenalty;
       return {
         ...profile,
+        fantasyPoints,
         opportunities,
         yards,
         touchdowns,
@@ -307,16 +313,16 @@ export function aggregateProfiles(
         touchdownsPerAttempt: safeRate(profile.passingTouchdowns, profile.passingAttempts),
         interceptionRate: safeRate(profile.interceptions, profile.passingAttempts),
         sackRate: safeRate(profile.sacks, dropbacks),
-        fantasyPointsPerOpportunity: safeRate(profile.ppr, opportunities),
+        fantasyPointsPerOpportunity: safeRate(fantasyPoints, opportunities),
         widths: [], heights: [], stackScore: 0,
       };
     });
 
   const totalVolumeValues = (profile: Profile) => profile.position === 'QB'
-    ? [profile.possessions, profile.teamPlays, profile.snaps, profile.passingAttempts, profile.negativePlays, profile.completions, profile.passingYards, profile.passingTouchdowns, profile.ppr]
+    ? [profile.possessions, profile.teamPlays, profile.snaps, profile.passingAttempts, profile.negativePlays, profile.completions, profile.passingYards, profile.passingTouchdowns, profile.fantasyPoints]
     : profile.position === 'RB'
-      ? [profile.possessions, profile.teamPlays, profile.snaps, profile.opportunities, profile.receptions, profile.yards, profile.touchdowns, profile.ppr]
-      : [profile.possessions, profile.teamPlays, profile.snaps, profile.targets, profile.receptions, profile.yards, profile.touchdowns, profile.ppr];
+      ? [profile.possessions, profile.teamPlays, profile.snaps, profile.opportunities, profile.receptions, profile.yards, profile.touchdowns, profile.fantasyPoints]
+      : [profile.possessions, profile.teamPlays, profile.snaps, profile.targets, profile.receptions, profile.yards, profile.touchdowns, profile.fantasyPoints];
   const volumeValues = (profile: Profile) => totalVolumeValues(profile).map((value) =>
     volumeMode === 'perGame' ? safeRate(value, profile.games) : value);
   const efficiencyValues = (profile: Profile) => profile.position === 'QB'
@@ -334,7 +340,7 @@ export function aggregateProfiles(
   }
 
   const selectors: Record<SortKey, (profile: Profile) => number> = {
-    ppr: (profile) => profile.ppr,
+    ppr: (profile) => profile.fantasyPoints,
     stackScore: (profile) => profile.stackScore,
     possessions: (profile) => profile.possessions,
     teamPlays: (profile) => profile.teamPlays,
