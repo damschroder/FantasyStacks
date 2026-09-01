@@ -85,6 +85,7 @@ const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const percent = (value: number) => `${decimal.format(value * 100)}%`;
 const minimumGamesForWindow = (windowKey: WindowKey) => windowKey === 'thisYear' || windowKey === 'lastYear' ? 6 : windowKey === 'last5' ? 3 : windowKey === 'last3' ? 2 : 1;
+type SortDirection = 'desc' | 'asc';
 
 type StackLayer = {
   label: string;
@@ -229,6 +230,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const [minGames, setMinGames] = useState(6);
   const [minTargets, setMinTargets] = useState(2);
   const [sortKey, setSortKey] = useState<SortKey>('ppr');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [pinned, setPinned] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
   const [density, setDensity] = useState(8);
@@ -240,8 +242,11 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 
   const teams = useMemo(() => [...new Set(dataset.playerGames.map((game) => game.team))].sort(), [dataset]);
   const profiles = useMemo(
-    () => aggregateProfiles(dataset, windowKey, position, team, minGames, minTargets, minEcr, Math.min(maxEcr, rankedEcrCeiling), maxEcr === ecrUnrankedSentinel, volumeMode, scoringMode, sortKey),
-    [dataset, windowKey, position, team, minGames, minTargets, minEcr, maxEcr, rankedEcrCeiling, ecrUnrankedSentinel, volumeMode, scoringMode, sortKey],
+    () => {
+      const ranked = aggregateProfiles(dataset, windowKey, position, team, minGames, minTargets, minEcr, Math.min(maxEcr, rankedEcrCeiling), maxEcr === ecrUnrankedSentinel, volumeMode, scoringMode, sortKey);
+      return sortDirection === 'desc' ? ranked : [...ranked].reverse();
+    },
+    [dataset, windowKey, position, team, minGames, minTargets, minEcr, maxEcr, rankedEcrCeiling, ecrUnrankedSentinel, volumeMode, scoringMode, sortKey, sortDirection],
   );
   const comparisonProfiles = useMemo(
     () => profiles.filter((profile) => pinned.includes(profile.playerId)),
@@ -404,15 +409,26 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               />
             </span>
           </label>
-          <label className="sort-label"><span>SORT</span>
-            <select value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(density * 3); }}>
-              {sortGroups.map((group) => (
-                <optgroup label={group.label} key={group.label}>
-                  {group.keys.map((key) => <option value={key} key={key}>{SORT_LABELS[key]}</option>)}
-                </optgroup>
-              ))}
-            </select>
-          </label>
+          <div className="sort-label"><span>SORT</span>
+            <div className="sort-input">
+              <select aria-label="Sort metric" value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(density * 3); }}>
+                {sortGroups.map((group) => (
+                  <optgroup label={group.label} key={group.label}>
+                    {group.keys.map((key) => <option value={key} key={key}>{SORT_LABELS[key]}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="sort-direction"
+                aria-label={`Sort ${sortDirection === 'desc' ? 'ascending' : 'descending'}`}
+                title={`Currently ${sortDirection === 'desc' ? 'highest first' : 'lowest first'}. Reverse order.`}
+                onClick={() => { setSortDirection((current) => current === 'desc' ? 'asc' : 'desc'); setShown(density * 3); }}
+              >
+                <span aria-hidden="true">{sortDirection === 'desc' ? '↓' : '↑'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
