@@ -20,6 +20,8 @@ Quarterback stacks use the same team-context base, then show pass attempts, sack
 
 Layer width is the player’s percentile for raw volume among the currently qualified cohort. Layer height is the percentile of the transition rate into that layer. Geometry is calculated after filtering; it is never stored in the source dataset.
 
+The two-sided FP ECR control filters the cohort by the current FantasyPros redraft-overall expert consensus ranking distributed through nflverse/DynastyProcess. Its NR endpoint preserves players without a current ranking. Stack geometry recalculates within the selected ECR range.
+
 ## Run locally
 
 ```powershell
