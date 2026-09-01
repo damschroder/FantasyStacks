@@ -294,7 +294,7 @@ export default function FantasyStacksApp({ dataset }: { dataset: Dataset }) {
                 id="density"
                 type="range"
                 min="3"
-                max="10"
+                max="12"
                 step="1"
                 value={density}
                 aria-valuetext={`${density} stacks per row`}
