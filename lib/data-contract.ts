@@ -179,6 +179,7 @@ export interface Profile {
   sackRate: number;
   fantasyPointsPerOpportunity: number;
   widths: number[];
+  blockWidths: number[];
   heights: number[];
   stackScore: number;
 }
@@ -189,6 +190,14 @@ function percentile(value: number, values: number[]): number {
   if (!values.length) return 0;
   const belowOrEqual = values.reduce((total, candidate) => total + (candidate <= value ? 1 : 0), 0);
   return (belowOrEqual / values.length) * 100;
+}
+
+function rankedBlockWidth(value: number, values: number[], lowerIsBetter = false): number {
+  const rankedValues = [...new Set([...values, value])].sort((a, b) => a - b);
+  if (rankedValues.length <= 1) return 100;
+  const rankIndex = rankedValues.indexOf(value);
+  const rank = lowerIsBetter ? rankedValues.length - 1 - rankIndex : rankIndex;
+  return (1 / 3 + (rank / (rankedValues.length - 1)) * 2 / 3) * 100;
 }
 
 export function aggregateProfiles(
@@ -311,7 +320,7 @@ export function aggregateProfiles(
         interceptionRate: safeRate(profile.interceptions, profile.passingAttempts),
         sackRate: safeRate(profile.sacks, dropbacks),
         fantasyPointsPerOpportunity: safeRate(fantasyPoints, opportunities),
-        widths: [], heights: [], stackScore: 0,
+        widths: [], blockWidths: [], heights: [], stackScore: 0,
       };
     });
 
@@ -329,8 +338,30 @@ export function aggregateProfiles(
       : [profile.snapShare, profile.targetsPerSnap, profile.catchRate, profile.yardsPerCatch, profile.touchdownsPerCatch, profile.fantasyPointsPerOpportunity];
   const volumeMatrix = profiles.map(volumeValues);
   const efficiencyMatrix = profiles.map(efficiencyValues);
+  const teamPlayTotals = new Map<string, { plays: number; games: number }>();
+  for (const game of dataset.teamGames) {
+    if (game.season !== selectedSeason || (allowedWeeks && !allowedWeeks.has(game.week)) || game.offensivePlays === null) continue;
+    const current = teamPlayTotals.get(game.team) ?? { plays: 0, games: 0 };
+    current.plays += game.offensivePlays;
+    current.games += 1;
+    teamPlayTotals.set(game.team, current);
+  }
+  const teamPlayBenchmarks = new Map([...teamPlayTotals].map(([teamName, total]) => [
+    teamName,
+    volumeMode === 'perGame' ? safeRate(total.plays, total.games) : total.plays,
+  ]));
+  const teamPlayValues = [...teamPlayBenchmarks.values()];
   for (const profile of profiles) {
-    profile.widths = volumeValues(profile).map((value, index) => percentile(value, volumeMatrix.map((candidate) => candidate[index])));
+    const profileVolumes = volumeValues(profile);
+    profile.widths = profileVolumes.map((value, index) => percentile(value, volumeMatrix.map((candidate) => candidate[index])));
+    profile.blockWidths = profileVolumes.map((value, index) => {
+      if (index === 0) {
+        const teamValue = teamPlayBenchmarks.get(profile.team) ?? value;
+        return rankedBlockWidth(teamValue, teamPlayValues);
+      }
+      const lowerIsBetter = profile.position === 'QB' && index === 3;
+      return rankedBlockWidth(value, volumeMatrix.map((candidate) => candidate[index]), lowerIsBetter);
+    });
     profile.heights = [0, ...efficiencyValues(profile).map((value, index) => percentile(value, efficiencyMatrix.map((candidate) => candidate[index])))];
     const scoreParts = [...profile.widths.slice(1), ...profile.heights.slice(1)];
     profile.stackScore = scoreParts.reduce((a, b) => a + b, 0) / scoreParts.length;

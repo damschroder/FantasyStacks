@@ -86,6 +86,7 @@ const decimal = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maxim
 const percent = (value: number) => `${decimal.format(value * 100)}%`;
 const minimumGamesForWindow = (windowKey: WindowKey) => windowKey === 'thisYear' || windowKey === 'lastYear' ? 6 : windowKey === 'last5' ? 3 : windowKey === 'last3' ? 2 : 1;
 type SortDirection = 'desc' | 'asc';
+type GeometryMode = 'trapezoid' | 'block';
 
 type StackLayer = {
   label: string;
@@ -104,12 +105,14 @@ function PlayerStack({
   rank,
   pinned,
   volumeMode,
+  geometryMode,
   onTogglePin,
 }: {
   profile: Profile;
   rank: number;
   pinned: boolean;
   volumeMode: VolumeMode;
+  geometryMode: GeometryMode;
   onTogglePin: () => void;
 }) {
   const perGame = volumeMode === 'perGame';
@@ -190,7 +193,7 @@ function PlayerStack({
       <div className="stack">
         {[...layers].reverse().map((layer, reverseIndex) => {
           const index = layers.length - 1 - reverseIndex;
-          const width = 17 + profile.widths[index] * 0.83;
+          const width = geometryMode === 'block' ? profile.blockWidths[index] : 17 + profile.widths[index] * 0.83;
           const height = index === 0 ? 46 : 39 + profile.heights[index] * 0.23;
           const splitTotal = (layer.split?.primary ?? 0) + (layer.split?.secondary ?? 0);
           const splitPercent = splitTotal > 0 ? ((layer.split?.primary ?? 0) / splitTotal) * 100 : 100;
@@ -225,6 +228,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const [windowKey, setWindowKey] = useState<WindowKey>('thisYear');
   const [volumeMode, setVolumeMode] = useState<VolumeMode>('total');
   const [scoringMode, setScoringMode] = useState<ScoringMode>('full');
+  const [geometryMode, setGeometryMode] = useState<GeometryMode>('trapezoid');
   const [position, setPosition] = useState<PositionFilter>('RECEIVERS');
   const [team, setTeam] = useState('ALL');
   const [minGames, setMinGames] = useState(6);
@@ -409,6 +413,22 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               />
             </span>
           </label>
+          <div className="geometry-label">
+            <span>GEOMETRY</span>
+            <div className="segmented geometry-toggle">
+              {(['trapezoid', 'block'] as const).map((value) => (
+                <button
+                  type="button"
+                  key={value}
+                  className={geometryMode === value ? 'active' : ''}
+                  aria-pressed={geometryMode === value}
+                  onClick={() => { setGeometryMode(value); setShown(density * 3); }}
+                >
+                  {value === 'trapezoid' ? 'Trapezoid' : 'Block'}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="sort-label"><span>SORT</span>
             <div className="sort-input">
               <select aria-label="Sort metric" value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(density * 3); }}>
@@ -434,9 +454,9 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 
       {displayProfiles.length ? (
         <>
-          <section className="player-grid" data-density={density} style={{ '--density': density } as React.CSSProperties}>
+          <section className="player-grid" data-density={density} data-geometry={geometryMode} style={{ '--density': density } as React.CSSProperties}>
             {visibleProfiles.map((profile) => (
-              <PlayerStack key={profile.playerId} profile={profile} rank={profiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} volumeMode={volumeMode} onTogglePin={() => togglePin(profile.playerId)} />
+              <PlayerStack key={profile.playerId} profile={profile} rank={profiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} volumeMode={volumeMode} geometryMode={geometryMode} onTogglePin={() => togglePin(profile.playerId)} />
             ))}
           </section>
           {!compareMode && shown < displayProfiles.length && <button className="load-more" onClick={() => setShown((current) => current + density * 3)}>Show 3 more rows <span>↓</span></button>}
@@ -457,6 +477,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
             <p className="eyebrow">THE VISUAL GRAMMAR</p><h2 id="guide-title">Read the shape,<br />not just the total.</h2>
             <div className="guide-grid">
               <div><strong>WIDTH</strong><p>How much volume a player produced compared with the currently qualified peer group.</p></div>
+              <div><strong>GEOMETRY</strong><p>Trapezoid preserves the original percentile silhouette. Block uses rectangles spanning one-third to full width: Team Plays ranks across all teams, while player layers rank within the active view.</p></div>
               <div><strong>HEIGHT</strong><p>How efficiently one stage converted into the next. Taller layers indicate a stronger rate.</p></div>
               <div><strong>BULGES</strong><p>Useful signal, not a flaw. A wide yardage tier above modest catches identifies explosive production.</p></div>
               <div><strong>RB COLOR</strong><p>Team color shows rushing touches and production. The highlight color shows targets and receiving production.</p></div>
