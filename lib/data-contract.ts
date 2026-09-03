@@ -1,5 +1,5 @@
 export type Position = 'WR' | 'TE' | 'RB' | 'QB';
-export type PositionFilter = 'FLEX' | 'RECEIVERS' | Position;
+export type PositionFilter = 'ALL' | 'FLEX' | 'RECEIVERS' | Position;
 
 export interface Player {
   playerId: string;
@@ -244,7 +244,7 @@ export function aggregateProfiles(
     if (game.season !== selectedSeason || !game.played || (allowedWeeks && !allowedWeeks.has(game.week))) continue;
     if (position === 'FLEX' && game.position === 'QB') continue;
     if (position === 'RECEIVERS' && game.position !== 'WR' && game.position !== 'TE') continue;
-    if (position !== 'FLEX' && position !== 'RECEIVERS' && game.position !== position) continue;
+    if (position !== 'ALL' && position !== 'FLEX' && position !== 'RECEIVERS' && game.position !== position) continue;
     if (team !== 'ALL' && game.team !== team) continue;
     const player = players.get(game.playerId);
     if (!player) continue;
@@ -342,8 +342,6 @@ export function aggregateProfiles(
     : profile.position === 'RB'
       ? [profile.snapShare, profile.opportunitiesPerSnap, profile.catchRate, profile.yardsPerTouch, profile.touchdownsPerTouch]
       : [profile.snapShare, profile.targetsPerSnap, profile.catchRate, profile.yardsPerCatch, profile.touchdownsPerCatch];
-  const volumeMatrix = profiles.map(volumeValues);
-  const efficiencyMatrix = profiles.map(efficiencyValues);
   const teamPlayTotals = new Map<string, { plays: number; games: number }>();
   for (const game of dataset.teamGames) {
     if (game.season !== selectedSeason || (allowedWeeks && !allowedWeeks.has(game.week)) || game.offensivePlays === null) continue;
@@ -359,25 +357,30 @@ export function aggregateProfiles(
   const teamPlayValues = [...teamPlayBenchmarks.values()];
   for (const profile of profiles) {
     const profileVolumes = volumeValues(profile);
+    const peerProfiles = position === 'ALL'
+      ? profiles.filter((candidate) => (candidate.position === 'QB') === (profile.position === 'QB'))
+      : profiles;
+    const peerVolumeMatrix = peerProfiles.map(volumeValues);
+    const peerEfficiencyMatrix = peerProfiles.map(efficiencyValues);
     profile.widths = profileVolumes.map((value, index) => index === 0
       ? percentile(teamPlayBenchmarks.get(profile.team) ?? value, teamPlayValues)
-      : percentile(value, volumeMatrix.map((candidate) => candidate[index])));
+      : percentile(value, peerVolumeMatrix.map((candidate) => candidate[index])));
     profile.blockWidths = profileVolumes.map((value, index) => {
       if (index === 0) {
         const teamValue = teamPlayBenchmarks.get(profile.team) ?? value;
         return rankedBlockWidth(teamValue, teamPlayValues);
       }
       const lowerIsBetter = profile.position === 'QB' && index === 3;
-      return rankedBlockWidth(value, volumeMatrix.map((candidate) => candidate[index]), lowerIsBetter);
+      return rankedBlockWidth(value, peerVolumeMatrix.map((candidate) => candidate[index]), lowerIsBetter);
     });
     profile.layerRanks = profileVolumes.map((value, index) => {
       if (index === 0) {
         return metricRank(teamPlayBenchmarks.get(profile.team) ?? value, teamPlayValues);
       }
       const lowerIsBetter = profile.position === 'QB' && index === 3;
-      return metricRank(value, volumeMatrix.map((candidate) => candidate[index]), lowerIsBetter);
+      return metricRank(value, peerVolumeMatrix.map((candidate) => candidate[index]), lowerIsBetter);
     });
-    profile.heights = [0, ...efficiencyValues(profile).map((value, index) => percentile(value, efficiencyMatrix.map((candidate) => candidate[index]))), 0];
+    profile.heights = [0, ...efficiencyValues(profile).map((value, index) => percentile(value, peerEfficiencyMatrix.map((candidate) => candidate[index]))), 0];
     const scoreParts = [...profile.widths.slice(1), ...profile.heights.slice(1, -1)];
     profile.stackScore = scoreParts.reduce((a, b) => a + b, 0) / scoreParts.length;
   }
