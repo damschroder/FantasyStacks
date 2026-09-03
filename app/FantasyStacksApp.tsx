@@ -94,6 +94,7 @@ const percent = (value: number) => `${decimal.format(value * 100)}%`;
 const minimumGamesForWindow = (windowKey: WindowKey) => windowKey === 'thisYear' || windowKey === 'lastYear' ? 6 : windowKey === 'last5' ? 3 : windowKey === 'last3' ? 2 : 1;
 type SortDirection = 'desc' | 'asc';
 type GeometryMode = 'trapezoid' | 'block';
+type ThemeMode = 'light' | 'dark';
 
 type StackLayer = {
   label: string;
@@ -271,6 +272,19 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [playerSearch, setPlayerSearch] = useState('');
+  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem('fantasy-stacks-theme');
+    const nextTheme: ThemeMode = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const frame = window.requestAnimationFrame(() => {
+      setThemeMode(nextTheme);
+      document.documentElement.dataset.theme = nextTheme;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const teams = useMemo(() => [...new Set(dataset.playerGames.map((game) => game.team))].sort(), [dataset]);
   const rankedProfiles = useMemo(
@@ -313,13 +327,24 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
     setPinned(next);
     if (!next.length) setCompareMode(false);
   };
+  const toggleTheme = () => {
+    const nextTheme: ThemeMode = themeMode === 'light' ? 'dark' : 'light';
+    setThemeMode(nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    window.localStorage.setItem('fantasy-stacks-theme', nextTheme);
+  };
 
   return (
     <main>
       <nav className="topbar">
         <a className="brand" href="#top" aria-label="FantasyStacks home"><BrandMark /><span>FANTASY<span>STACKS</span></span></a>
         <div className="season-label">{windowKey === 'lastYear' ? dataset.manifest.season - 1 : dataset.manifest.season} REGULAR SEASON</div>
-        <button className="about-button" onClick={() => setGuideOpen(true)}>How to read this</button>
+        <div className="topbar-actions">
+          <button className="theme-button" type="button" aria-pressed={themeMode === 'dark'} onClick={toggleTheme}>
+            {themeMode === 'dark' ? 'Light mode' : 'Dark mode'}
+          </button>
+          <button className="about-button" onClick={() => setGuideOpen(true)}>How to read this</button>
+        </div>
       </nav>
 
       <section className="hero" id="top">
