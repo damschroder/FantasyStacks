@@ -16,8 +16,12 @@ import {
   WindowKey,
 } from '@/lib/data-contract';
 
-const WINDOW_LABELS: Record<WindowKey, string> = {
-  lastWeek: 'Last week', last3: 'Last 3', last5: 'Last 5', thisYear: 'This year', lastYear: 'Last year',
+const WINDOW_LABELS: Record<WindowKey, (season: number) => string> = {
+  lastWeek: () => 'Last week',
+  last3: () => 'Last 3',
+  last5: () => 'Last 5',
+  thisYear: (season) => `${season} season`,
+  lastYear: (season) => `${season - 1} season`,
 };
 const SORT_LABELS: Record<SortKey, string> = {
   ppr: 'Fantasy points',
@@ -457,7 +461,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
           <span className="control-label">WINDOW</span>
           <div className="segmented">
             {(Object.keys(WINDOW_LABELS) as WindowKey[]).map((key) => (
-              <button key={key} className={windowKey === key ? 'active' : ''} onClick={() => changeWindow(key)}>{WINDOW_LABELS[key]}</button>
+              <button key={key} className={windowKey === key ? 'active' : ''} onClick={() => changeWindow(key)}>{WINDOW_LABELS[key](dataset.manifest.season)}</button>
             ))}
           </div>
         </div>
@@ -520,7 +524,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       )}
 
       <section className="results-head">
-        <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey].toUpperCase()}`}</p>
+        <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey](dataset.manifest.season).toUpperCase()}`}</p>
         <div className="results-tools">
           <label className="player-search-label">
             <span>PLAYER SEARCH</span>
