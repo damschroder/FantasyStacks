@@ -232,7 +232,7 @@ function PlayerStack({
                 style={{ width: `${width}%`, height: `${height}px`, '--split': `${splitPercent}%` } as React.CSSProperties}
               >
                 <span className="tier-rank" aria-label={`Rank ${layerRank.rank} out of ${layerRank.total}`}>{layerRank.rank}/{layerRank.total}</span>
-                <span className="tier-label">{layer.label}</span>
+                <span className={`tier-label${layer.label === 'Team plays' ? ' team-plays-label' : ''}`}>{layer.label}</span>
                 <strong>{layer.value}</strong>
               </div>
             </div>
