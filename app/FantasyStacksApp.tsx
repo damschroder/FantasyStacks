@@ -351,6 +351,7 @@ function PlayerStack({
   relatedAnchor,
   volumeMode,
   geometryMode,
+  onHide,
   onTogglePin,
 }: {
   profile: Profile;
@@ -359,6 +360,7 @@ function PlayerStack({
   relatedAnchor?: boolean;
   volumeMode: VolumeMode;
   geometryMode: GeometryMode;
+  onHide: () => void;
   onTogglePin: () => void;
 }) {
   const perGame = volumeMode === 'perGame';
@@ -479,7 +481,9 @@ function PlayerStack({
         })}
       </div>
       <div className="card-footer">
-        <span>STACK {integer.format(profile.stackScore)}</span>
+        <button className="hide-button" type="button" aria-label={`Hide ${profile.name}`} onClick={onHide}>
+          <span aria-hidden="true">×</span> Hide
+        </button>
         <button className="pin-button" aria-pressed={pinned} onClick={onTogglePin}>
           {pinned ? 'Selected ✓' : 'Add to compare +'}
         </button>
@@ -503,6 +507,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const [sortKey, setSortKey] = useState<SortKey>('ppr');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [pinned, setPinned] = useState<string[]>([]);
+  const [hidden, setHidden] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
   const [density, setDensity] = useState(8);
   const [minEcr, setMinEcr] = useState(1);
@@ -534,6 +539,14 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
     },
     [dataset, windowKey, position, team, minGames, minTargets, minEcr, maxEcr, rankedEcrCeiling, ecrUnrankedSentinel, volumeMode, scoringMode, sortKey, sortDirection],
   );
+  const availableProfiles = useMemo(
+    () => rankedProfiles.filter((profile) => !hidden.includes(profile.playerId)),
+    [rankedProfiles, hidden],
+  );
+  const hiddenPlayers = useMemo(
+    () => hidden.map((playerId) => dataset.players.find((player) => player.playerId === playerId)).filter((player) => player !== undefined),
+    [dataset.players, hidden],
+  );
   const priorSeasonProfiles = useMemo(
     () => aggregateProfiles(dataset, 'lastYear', 'ALL', 'ALL', 1, 0, 1, rankedEcrCeiling, true, 'total', scoringMode, 'ppr'),
     [dataset, rankedEcrCeiling, scoringMode],
@@ -544,15 +557,15 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   );
   const normalizedSearch = playerSearch.trim().toLocaleLowerCase();
   const matchingProfiles = useMemo(
-    () => normalizedSearch ? rankedProfiles.filter((profile) => profile.name.toLocaleLowerCase().includes(normalizedSearch)) : rankedProfiles,
-    [rankedProfiles, normalizedSearch],
+    () => normalizedSearch ? availableProfiles.filter((profile) => profile.name.toLocaleLowerCase().includes(normalizedSearch)) : availableProfiles,
+    [availableProfiles, normalizedSearch],
   );
   const anchorProfile = useMemo(() => {
     if (!normalizedSearch) return null;
-    return rankedProfiles.find((profile) => profile.name.toLocaleLowerCase() === normalizedSearch)
+    return availableProfiles.find((profile) => profile.name.toLocaleLowerCase() === normalizedSearch)
       ?? matchingProfiles[0]
       ?? null;
-  }, [rankedProfiles, matchingProfiles, normalizedSearch]);
+  }, [availableProfiles, matchingProfiles, normalizedSearch]);
   const relatedResult = useMemo(() => {
     if (!anchorProfile) return { profiles: [] as Profile[], betterCount: 0, worseCount: 0 };
     const anchorPriorPoints = priorSeasonPoints.get(anchorProfile.playerId) ?? 0;
@@ -584,15 +597,15 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       if (b.ecr !== null) return 1;
       return (priorSeasonPoints.get(b.playerId) ?? 0) - (priorSeasonPoints.get(a.playerId) ?? 0);
     };
-    const candidates = rankedProfiles.filter((profile) => profile.playerId !== anchorProfile.playerId);
+    const candidates = availableProfiles.filter((profile) => profile.playerId !== anchorProfile.playerId);
     const better = candidates.filter((profile) => qualityDirection(profile) < 0).sort((a, b) => similarity(a) - similarity(b)).slice(0, 3).sort(qualityOrder);
     const worse = candidates.filter((profile) => qualityDirection(profile) > 0).sort((a, b) => similarity(a) - similarity(b)).slice(0, 3).sort(qualityOrder);
     return { profiles: [...better, anchorProfile, ...worse], betterCount: better.length, worseCount: worse.length };
-  }, [anchorProfile, priorSeasonPoints, rankedProfiles]);
+  }, [anchorProfile, priorSeasonPoints, availableProfiles]);
   const relatedActive = relatedSearch && Boolean(anchorProfile);
   const comparisonProfiles = useMemo(
-    () => rankedProfiles.filter((profile) => pinned.includes(profile.playerId)),
-    [rankedProfiles, pinned],
+    () => availableProfiles.filter((profile) => pinned.includes(profile.playerId)),
+    [availableProfiles, pinned],
   );
   const displayProfiles = compareMode ? comparisonProfiles : relatedActive ? relatedResult.profiles : matchingProfiles;
   const visibleProfiles = compareMode || relatedActive ? displayProfiles : displayProfiles.slice(0, shown);
@@ -619,6 +632,16 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       : [...pinned, playerId];
     setPinned(next);
     if (!next.length) setCompareMode(false);
+  };
+  const hidePlayer = (profile: Profile) => {
+    setHidden((current) => current.includes(profile.playerId) ? current : [...current, profile.playerId]);
+    const nextPinned = pinned.filter((playerId) => playerId !== profile.playerId);
+    setPinned(nextPinned);
+    if (!nextPinned.length) setCompareMode(false);
+    if (profile.name.toLocaleLowerCase() === normalizedSearch) {
+      setPlayerSearch('');
+      setRelatedSearch(false);
+    }
   };
   const toggleTheme = () => {
     const nextTheme: ThemeMode = themeMode === 'light' ? 'dark' : 'light';
@@ -736,7 +759,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       <section className="results-head" aria-label="Player filters and sorting">
         <div className="results-summary">
           <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey](dataset.manifest.season).toUpperCase()}`}</p>
-          <div className="results-count"><strong>{rankedProfiles.length}</strong><span>QUALIFIED<br />PLAYERS</span></div>
+          <div className="results-count"><strong>{availableProfiles.length}</strong><span>VISIBLE<br />PLAYERS</span></div>
         </div>
         <div className="results-tools">
           <div className="position-label">
@@ -751,7 +774,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
           </div>
           <PlayerSearchControl
             value={playerSearch}
-            candidates={rankedProfiles}
+            candidates={availableProfiles}
             relatedSearch={relatedSearch}
             onChange={(nextValue) => { setPlayerSearch(nextValue); setShown(density * 3); }}
             onToggleRelated={() => { setRelatedSearch((current) => !current); setCompareMode(false); }}
@@ -816,7 +839,21 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
           <div className="filter-field"><span>TEAM</span><TeamPicker team={team} teams={teams} onChange={setTeam} /></div>
           <label>MIN. GAMES<select value={minGames} onChange={(event) => setMinGames(Number(event.target.value))}>{[1, 2, 3, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <label>MIN. {position === 'ALL' ? 'USAGE' : position === 'QB' ? 'PASSES' : position === 'RB' || position === 'FLEX' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <button onClick={() => { setTeam('ALL'); setMinGames(minimumGamesForWindow(windowKey)); setMinTargets(2); }}>Reset filters</button>
+          <button onClick={() => { setTeam('ALL'); setMinGames(minimumGamesForWindow(windowKey)); setMinTargets(2); setHidden([]); }}>Reset filters</button>
+        </section>
+      )}
+
+      {hiddenPlayers.length > 0 && (
+        <section className="hidden-bar" aria-label={`${hiddenPlayers.length} hidden player${hiddenPlayers.length === 1 ? '' : 's'}`}>
+          <div className="hidden-status"><span>HIDDEN PLAYERS</span><strong>{hiddenPlayers.length} suppressed</strong></div>
+          <div className="hidden-names">
+            {hiddenPlayers.map((player) => (
+              <button key={player.playerId} type="button" onClick={() => setHidden((current) => current.filter((playerId) => playerId !== player.playerId))} aria-label={`Restore ${player.name}`}>
+                {player.name} <span aria-hidden="true">↶</span>
+              </button>
+            ))}
+          </div>
+          <button className="restore-all" type="button" onClick={() => setHidden([])}>Restore all</button>
         </section>
       )}
 
@@ -845,7 +882,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
             style={{ '--density': displayDensity, '--related-start': 4 - relatedResult.betterCount } as React.CSSProperties}
           >
             {visibleProfiles.map((profile) => (
-              <PlayerStack key={profile.playerId} profile={profile} rank={rankedProfiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} relatedAnchor={relatedActive && !compareMode && profile.playerId === anchorProfile?.playerId} volumeMode={volumeMode} geometryMode={geometryMode} onTogglePin={() => togglePin(profile.playerId)} />
+              <PlayerStack key={profile.playerId} profile={profile} rank={rankedProfiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} relatedAnchor={relatedActive && !compareMode && profile.playerId === anchorProfile?.playerId} volumeMode={volumeMode} geometryMode={geometryMode} onHide={() => hidePlayer(profile)} onTogglePin={() => togglePin(profile.playerId)} />
             ))}
           </section>
           {!compareMode && !relatedActive && shown < displayProfiles.length && <button className="load-more" onClick={() => setShown((current) => current + density * 3)}>Show 3 more rows <span>↓</span></button>}
