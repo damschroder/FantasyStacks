@@ -958,7 +958,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
           <div className="filter-field"><span>TEAM</span><TeamPicker team={team} teams={teams} onChange={setTeam} /></div>
           <label>MIN. GAMES<select value={minGames} onChange={(event) => setMinGames(Number(event.target.value))}>{[1, 2, 3, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <label>MIN. {position === 'ALL' ? 'USAGE' : position === 'QB' ? 'PASSES' : position === 'RB' || position === 'FLEX' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <button onClick={() => { setTeam('ALL'); setMinGames(minimumGamesForWindow(windowKey)); setMinTargets(2); setHidden([]); }}>Reset filters</button>
+          <button onClick={() => { setTeam('ALL'); setMinGames(minimumGamesForWindow(windowKey)); setMinTargets(2); setHidden([]); setPlayerSearch(''); setRelatedSearch(false); }}>Reset filters</button>
         </section>
       )}
 
