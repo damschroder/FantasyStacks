@@ -644,7 +644,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         <p className="hero-copy">Find the durable opportunity underpinning predictable performance.</p>
       </section>
 
-      <section className="control-deck" aria-label="Analysis controls">
+      <section className="control-deck" aria-label="Stack view controls">
         <div className="control-group">
           <span className="control-label">WINDOW</span>
           <div className="segmented">
@@ -673,47 +673,81 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
             ))}
           </div>
         </div>
-        <div className="control-group position-group">
-          <span className="control-label">POSITION</span>
-          <div className="segmented compact">
-            {(['ALL', 'FLEX', 'RECEIVERS', 'WR', 'TE', 'RB', 'QB'] as const).map((value) => (
-              <button key={value} className={position === value ? 'active' : ''} onClick={() => changePosition(value)} title={value === 'ALL' ? 'Quarterbacks, running backs, wide receivers, and tight ends' : value === 'FLEX' ? 'Running backs, wide receivers, and tight ends' : undefined}>
-                {value === 'RECEIVERS' ? 'WR + TE' : value}
-              </button>
-            ))}
+        <div className="control-group density-group">
+          <label className="density-label" htmlFor="density">
+            <span>DENSITY <output htmlFor="density">{density} / ROW</output></span>
+            <span className="density-input">
+              <input
+                id="density"
+                type="range"
+                min="3"
+                max="12"
+                step="1"
+                value={density}
+                aria-valuetext={`${density} stacks per row`}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  setDensity(next);
+                  setShown(next * 3);
+                }}
+              />
+            </span>
+          </label>
+        </div>
+        <div className="control-group geometry-group">
+          <div className="geometry-label">
+            <span>GEOMETRY</span>
+            <div className="segmented geometry-toggle">
+              {(['trapezoid', 'block'] as const).map((value) => (
+                <button
+                  type="button"
+                  key={value}
+                  className={geometryMode === value ? 'active' : ''}
+                  aria-pressed={geometryMode === value}
+                  onClick={() => { setGeometryMode(value); setShown(density * 3); }}
+                >
+                  {value === 'trapezoid' ? 'Trapezoid' : 'Block'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-        <button className={`filter-toggle${filtersOpen ? ' active' : ''}`} onClick={() => setFiltersOpen(!filtersOpen)}>
-          Filters <span>{filtersOpen ? '−' : '+'}</span>
-        </button>
-        <div className="results-count"><strong>{rankedProfiles.length}</strong><span>QUALIFIED<br />PLAYERS</span></div>
+        <div className="control-group color-group">
+          <div className="color-label">
+            <span>COLOR</span>
+            <div className="segmented color-toggle">
+              {(['origional', 'flow'] as const).map((value) => (
+                <button
+                  type="button"
+                  key={value}
+                  className={colorMode === value ? 'active' : ''}
+                  aria-pressed={colorMode === value}
+                  onClick={() => setColorMode(value)}
+                >
+                  {value === 'origional' ? 'Origional' : 'Flow'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </section>
 
-      {filtersOpen && (
-        <section className="filter-panel" aria-label="Minimum qualification filters">
-          <div className="filter-field"><span>TEAM</span><TeamPicker team={team} teams={teams} onChange={setTeam} /></div>
-          <label>MIN. GAMES<select value={minGames} onChange={(event) => setMinGames(Number(event.target.value))}>{[1, 2, 3, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <label>MIN. {position === 'ALL' ? 'USAGE' : position === 'QB' ? 'PASSES' : position === 'RB' || position === 'FLEX' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <button onClick={() => { setTeam('ALL'); setMinGames(minimumGamesForWindow(windowKey)); setMinTargets(2); }}>Reset filters</button>
-        </section>
-      )}
-
-      {pinned.length > 0 && (
-        <section className="compare-bar">
-          <div><span>COMPARISON SET</span><strong>{pinned.length} selected</strong></div>
-          <div className="compare-names">{pinned.map((id) => dataset.players.find((player) => player.playerId === id)?.name).filter(Boolean).map((name) => <span key={name}>{name}</span>)}</div>
-          <div className="compare-actions">
-            <button className="compare-button" onClick={() => { setCompareMode((current) => !current); setShown(Math.max(density * 3, pinned.length)); }}>
-              {compareMode ? 'Show all stacks' : `Compare ${pinned.length}`}
-            </button>
-            <button onClick={() => { setPinned([]); setCompareMode(false); }}>Clear</button>
-          </div>
-        </section>
-      )}
-
-      <section className="results-head">
-        <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey](dataset.manifest.season).toUpperCase()}`}</p>
+      <section className="results-head" aria-label="Player filters and sorting">
+        <div className="results-summary">
+          <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey](dataset.manifest.season).toUpperCase()}`}</p>
+          <div className="results-count"><strong>{rankedProfiles.length}</strong><span>QUALIFIED<br />PLAYERS</span></div>
+        </div>
         <div className="results-tools">
+          <div className="position-label">
+            <span>POSITION</span>
+            <div className="segmented position-toggle">
+              {(['ALL', 'FLEX', 'RECEIVERS', 'WR', 'TE', 'RB', 'QB'] as const).map((value) => (
+                <button key={value} className={position === value ? 'active' : ''} onClick={() => changePosition(value)} title={value === 'ALL' ? 'Quarterbacks, running backs, wide receivers, and tight ends' : value === 'FLEX' ? 'Running backs, wide receivers, and tight ends' : undefined}>
+                  {value === 'RECEIVERS' ? 'WR + TE' : value}
+                </button>
+              ))}
+            </div>
+          </div>
           <PlayerSearchControl
             value={playerSearch}
             candidates={rankedProfiles}
@@ -750,57 +784,6 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               />
             </span>
           </label>
-          <label className="density-label" htmlFor="density">
-            <span>DENSITY <output htmlFor="density">{density} / ROW</output></span>
-            <span className="density-input">
-              <input
-                id="density"
-                type="range"
-                min="3"
-                max="12"
-                step="1"
-                value={density}
-                aria-valuetext={`${density} stacks per row`}
-                onChange={(event) => {
-                  const next = Number(event.target.value);
-                  setDensity(next);
-                  setShown(next * 3);
-                }}
-              />
-            </span>
-          </label>
-          <div className="geometry-label">
-            <span>GEOMETRY</span>
-            <div className="segmented geometry-toggle">
-              {(['trapezoid', 'block'] as const).map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  className={geometryMode === value ? 'active' : ''}
-                  aria-pressed={geometryMode === value}
-                  onClick={() => { setGeometryMode(value); setShown(density * 3); }}
-                >
-                  {value === 'trapezoid' ? 'Trapezoid' : 'Block'}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="color-label">
-            <span>COLOR</span>
-            <div className="segmented color-toggle">
-              {(['origional', 'flow'] as const).map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  className={colorMode === value ? 'active' : ''}
-                  aria-pressed={colorMode === value}
-                  onClick={() => setColorMode(value)}
-                >
-                  {value === 'origional' ? 'Origional' : 'Flow'}
-                </button>
-              ))}
-            </div>
-          </div>
           <div className="sort-label"><span>SORT</span>
             <div className="sort-input">
               <select aria-label="Sort metric" value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(density * 3); }}>
@@ -821,8 +804,33 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               </button>
             </div>
           </div>
+          <button className={`filter-toggle${filtersOpen ? ' active' : ''}`} onClick={() => setFiltersOpen(!filtersOpen)}>
+            Filters <span>{filtersOpen ? '−' : '+'}</span>
+          </button>
         </div>
       </section>
+
+      {filtersOpen && (
+        <section className="filter-panel" aria-label="Minimum qualification filters">
+          <div className="filter-field"><span>TEAM</span><TeamPicker team={team} teams={teams} onChange={setTeam} /></div>
+          <label>MIN. GAMES<select value={minGames} onChange={(event) => setMinGames(Number(event.target.value))}>{[1, 2, 3, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label>MIN. {position === 'ALL' ? 'USAGE' : position === 'QB' ? 'PASSES' : position === 'RB' || position === 'FLEX' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <button onClick={() => { setTeam('ALL'); setMinGames(minimumGamesForWindow(windowKey)); setMinTargets(2); }}>Reset filters</button>
+        </section>
+      )}
+
+      {pinned.length > 0 && (
+        <section className="compare-bar">
+          <div><span>COMPARISON SET</span><strong>{pinned.length} selected</strong></div>
+          <div className="compare-names">{pinned.map((id) => dataset.players.find((player) => player.playerId === id)?.name).filter(Boolean).map((name) => <span key={name}>{name}</span>)}</div>
+          <div className="compare-actions">
+            <button className="compare-button" onClick={() => { setCompareMode((current) => !current); setShown(Math.max(density * 3, pinned.length)); }}>
+              {compareMode ? 'Show all stacks' : `Compare ${pinned.length}`}
+            </button>
+            <button onClick={() => { setPinned([]); setCompareMode(false); }}>Clear</button>
+          </div>
+        </section>
+      )}
 
       {displayProfiles.length ? (
         <>
