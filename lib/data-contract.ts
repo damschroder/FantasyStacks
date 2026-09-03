@@ -94,6 +94,7 @@ export type VolumeMode = 'total' | 'perGame';
 export type ScoringMode = 'full' | 'half' | 'off';
 export type SortKey =
   | 'ppr'
+  | 'ecr'
   | 'stackScore'
   | 'teamPlays'
   | 'snaps'
@@ -387,6 +388,7 @@ export function aggregateProfiles(
 
   const selectors: Record<SortKey, (profile: Profile) => number> = {
     ppr: (profile) => profile.fantasyPoints,
+    ecr: (profile) => profile.ecr === null ? Number.NEGATIVE_INFINITY : -profile.ecr,
     stackScore: (profile) => profile.stackScore,
     teamPlays: (profile) => profile.teamPlays,
     snaps: (profile) => profile.snaps,
