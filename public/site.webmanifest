@@ -1,0 +1,16 @@
+{
+  "name": "FantasyStacks",
+  "short_name": "FantasyStacks",
+  "description": "Compare NFL fantasy football players by opportunity, efficiency, and production.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f2f0e9",
+  "theme_color": "#151d21",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
