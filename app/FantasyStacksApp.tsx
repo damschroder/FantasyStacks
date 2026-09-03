@@ -168,10 +168,11 @@ function PlayerStack({
   const layers = profile.position === 'QB' ? quarterbackLayers : profile.position === 'RB' ? runningBackLayers : receiverLayers;
   const color = TEAM_COLORS[profile.team] ?? '#6e777a';
   const logo = TEAM_LOGOS[profile.team];
+  const initials = profile.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('');
   return (
     <article className={`player-card${pinned ? ' pinned' : ''}`} style={{ '--accent': color } as React.CSSProperties}>
       <div className="player-heading">
-        <div>
+        <div className="player-details">
           <p className="player-meta">
             <span className="team-identity">
               {logo && <Image className="team-logo" src={logo} alt="" width={28} height={28} loading="lazy" unoptimized />}
@@ -183,7 +184,23 @@ function PlayerStack({
             <span>{profile.games} GAMES</span>
             {profile.ecr !== null && <><span aria-hidden="true">·</span><span>FP ECR {decimal.format(profile.ecr)}</span></>}
           </p>
-          <h2>{profile.name}</h2>
+          <div className="player-name-row">
+            <span className="player-headshot">
+              <span className="player-headshot-fallback" aria-hidden="true">{initials}</span>
+              {profile.headshotUrl && (
+                <Image
+                  src={profile.headshotUrl}
+                  alt={`${profile.name} headshot`}
+                  width={48}
+                  height={48}
+                  loading="lazy"
+                  unoptimized
+                  onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                />
+              )}
+            </span>
+            <h2>{profile.name}</h2>
+          </div>
           {profile.position === 'RB' && <p className="role-legend"><span className="rush-key">RUSH / TOUCH</span><span className="receive-key">TARGET / RECEIVE</span></p>}
           {profile.position === 'QB' && <p className="role-legend"><span className="sack-key">SACKS</span><span className="interception-key">INTERCEPTIONS</span></p>}
         </div>
