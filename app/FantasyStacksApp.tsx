@@ -596,11 +596,11 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
                 type="button"
                 className={relatedSearch ? 'active' : ''}
                 aria-pressed={relatedSearch}
-                disabled={!normalizedSearch}
-                title="Show three stronger and three weaker related players"
+                disabled={!normalizedSearch && !relatedSearch}
+                title={relatedSearch ? 'Return to all matching players' : 'Show three stronger and three weaker related players'}
                 onClick={() => { setRelatedSearch((current) => !current); setCompareMode(false); }}
               >
-                Related
+                {relatedSearch ? 'All' : 'Related'}
               </button>
             </div>
           </div>
