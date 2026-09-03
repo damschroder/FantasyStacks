@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
+import { usePostHog } from 'posthog-js/react';
 import {
   aggregateProfiles,
   Dataset,
@@ -101,6 +102,7 @@ type SortDirection = 'desc' | 'asc';
 type GeometryMode = 'trapezoid' | 'block';
 type ColorMode = 'origional' | 'flow';
 type ThemeMode = 'light' | 'dark';
+type FeedbackReaction = 'love_it' | 'useful' | 'confusing' | 'bug';
 
 type StackLayer = {
   label: string;
@@ -124,6 +126,108 @@ const layerColorClass = (label: string) => {
 
 function BrandMark() {
   return <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>;
+}
+
+function FeedbackWidget({ context }: { context: Record<string, string | number | boolean> }) {
+  const posthog = usePostHog();
+  const [open, setOpen] = useState(false);
+  const [reaction, setReaction] = useState<FeedbackReaction | null>(null);
+  const [comment, setComment] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [open]);
+
+  const openFeedback = () => {
+    setOpen(true);
+    setSubmitted(false);
+    posthog.capture('fantasystacks_feedback_opened', context);
+    window.requestAnimationFrame(() => textareaRef.current?.focus());
+  };
+
+  const submitFeedback = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const message = comment.trim();
+    if (!reaction && !message) return;
+    posthog.capture('fantasystacks_feedback_submitted', {
+      ...context,
+      reaction: reaction ?? 'comment_only',
+      feedback: message || undefined,
+    });
+    setSubmitted(true);
+    setReaction(null);
+    setComment('');
+  };
+
+  return (
+    <aside className="feedback-shell">
+      {open && (
+        <section className="feedback-panel" role="dialog" aria-labelledby="feedback-title">
+          <button className="feedback-close" type="button" aria-label="Close feedback" onClick={() => setOpen(false)}>×</button>
+          {submitted ? (
+            <div className="feedback-thanks" aria-live="polite">
+              <span aria-hidden="true">✓</span>
+              <h2 id="feedback-title">Got it. Thank you.</h2>
+              <p>Your note is in the pile shaping the next pass.</p>
+              <button type="button" onClick={() => setOpen(false)}>Back to the stacks</button>
+            </div>
+          ) : (
+            <form onSubmit={submitFeedback}>
+              <p className="feedback-kicker">ALPHA FEEDBACK</p>
+              <h2 id="feedback-title">How is this working for you?</h2>
+              <div className="feedback-reactions" aria-label="Quick reaction">
+                {([
+                  ['love_it', 'Love it'],
+                  ['useful', 'Useful'],
+                  ['confusing', 'Confusing'],
+                  ['bug', 'Found a bug'],
+                ] as Array<[FeedbackReaction, string]>).map(([value, label]) => (
+                  <button
+                    type="button"
+                    key={value}
+                    className={reaction === value ? 'active' : ''}
+                    aria-pressed={reaction === value}
+                    onClick={() => setReaction(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <label htmlFor="feedback-comment">What should we keep, change, or fix?</label>
+              <textarea
+                ref={textareaRef}
+                id="feedback-comment"
+                value={comment}
+                maxLength={1200}
+                placeholder="A sentence is plenty…"
+                onChange={(event) => setComment(event.target.value)}
+              />
+              <div className="feedback-submit-row">
+                <small>Current view settings are attached automatically.</small>
+                <button type="submit" disabled={!reaction && !comment.trim()}>Send feedback</button>
+              </div>
+            </form>
+          )}
+        </section>
+      )}
+      <button
+        className="feedback-trigger"
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => open ? setOpen(false) : openFeedback()}
+      >
+        <span aria-hidden="true">●</span> Feedback
+      </button>
+    </aside>
+  );
 }
 
 function TeamPicker({
@@ -895,6 +999,27 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         <span>ALPHA · {dataset.manifest.seasons.join('–')} DATA · {dataset.manifest.provider.name.toUpperCase()}</span>
         <p>Width = peer-relative volume. Height = transition efficiency. <a href="https://nflverse.nflverse.com/" target="_blank" rel="noreferrer">Data via nflverse ↗</a></p>
       </footer>
+
+      <FeedbackWidget context={{
+        window: windowKey,
+        normalize: volumeMode,
+        ppr: scoringMode,
+        geometry: geometryMode,
+        color: colorMode,
+        position,
+        team,
+        minimum_games: minGames,
+        minimum_usage: minTargets,
+        ecr_minimum: minEcr,
+        ecr_maximum: maxEcr === ecrUnrankedSentinel ? 'NR' : maxEcr,
+        density,
+        sort: sortKey,
+        sort_direction: sortDirection,
+        visible_player_count: availableProfiles.length,
+        comparison_active: compareMode,
+        comparison_size: pinned.length,
+        related_search_active: relatedActive,
+      }} />
 
       {guideOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setGuideOpen(false)}>
