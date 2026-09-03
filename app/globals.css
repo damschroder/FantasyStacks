@@ -78,6 +78,7 @@ h1 { margin: 0; max-width: 980px; font-size: clamp(34px, 3.9vw, 56px); line-heig
 .compare-bar .compare-button { min-height: 36px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); padding: 0 14px; text-decoration: none; white-space: nowrap; }
 .sort-input { height: 32px; display: flex; align-items: stretch; }
 .sort-label select { min-height: 32px; border-color: var(--ink); color: var(--ink); font-size: 13px; }
+.sort-label select optgroup, .sort-label select option { background: var(--paper); color: var(--ink); }
 .sort-direction { width: 34px; min-height: 32px; margin-left: -1px; border: 1px solid var(--ink); background: var(--paper); display: grid; place-items: center; font: 800 18px/1 monospace; }
 .sort-direction:hover { background: var(--acid); color: var(--tier-ink); }
 .player-grid { display: grid; grid-template-columns: repeat(var(--density, 3), minmax(0, 1fr)); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
