@@ -14,7 +14,7 @@ Receiver stacks have seven layers:
 
 Running-back stacks use the same team-plays base, then show player snaps, touches plus targets, catches, scrimmage yards, total touchdowns, and fantasy points. Rushing volume uses the team color; target and receiving volume use the contrasting highlight color.
 
-The FLEX view combines RB, WR, and TE stacks in one qualified field while preserving each position's stack grammar.
+The ALL view combines QB, RB, WR, and TE stacks, making a complete team-level player view possible while preserving each position's stack grammar. QB geometry and ranks remain comparable to QB peers; RB, WR, and TE geometry and ranks share the active FLEX-position field. The FLEX view omits QBs.
 
 Quarterback stacks use the same team-plays base, then show player snaps, pass attempts, sacks plus interceptions, completions, passing yards, passing touchdowns, and fantasy points. The loss-event layer splits sacks from interceptions by color; its height represents the percentage of dropbacks that avoided either outcome.
 
