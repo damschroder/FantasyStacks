@@ -35,13 +35,13 @@ const SORT_LABELS: Record<SortKey, string> = {
   rushingTouchdowns: 'Rushing TDs',
   receivingTouchdowns: 'Receiving TDs',
   snapShare: 'Snap share',
-  targetsPerSnap: 'Targets / snap',
-  opportunitiesPerSnap: 'Opportunities / snap',
-  catchRate: 'Catch rate',
-  yardsPerCatch: 'Yards / catch',
-  touchdownsPerCatch: 'TDs / catch',
-  yardsPerTouch: 'Yards / touch',
-  touchdownsPerTouch: 'TDs / touch',
+  targetsPerSnap: 'Target rate',
+  opportunitiesPerSnap: 'usage rate',
+  catchRate: 'catch rate',
+  yardsPerCatch: 'yards per catch',
+  touchdownsPerCatch: 'TD rate',
+  yardsPerTouch: 'yards per touch',
+  touchdownsPerTouch: 'TD rate',
   passingAttempts: 'Pass attempts',
   completions: 'Completions',
   passingYards: 'Passing yards',
@@ -56,29 +56,28 @@ const SORT_LABELS: Record<SortKey, string> = {
   touchdownsPerAttempt: 'TDs / attempt',
   interceptionRate: 'Interception rate',
   sackRate: 'Sack rate',
-  fantasyPointsPerOpportunity: 'Fantasy points / opportunity',
 };
 const RECEIVER_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
   { label: 'Stack layers · volume', keys: ['teamPlays', 'snaps', 'targets', 'receptions', 'yards', 'touchdowns'] },
-  { label: 'Transitions · efficiency', keys: ['snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch', 'fantasyPointsPerOpportunity'] },
+  { label: 'Transitions · efficiency', keys: ['snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch'] },
 ];
 const RB_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
   { label: 'Stack layers · volume', keys: ['teamPlays', 'snaps', 'opportunities', 'carries', 'targets', 'receptions', 'yards', 'rushingYards', 'receivingYards', 'touchdowns', 'rushingTouchdowns', 'receivingTouchdowns'] },
-  { label: 'Transitions · efficiency', keys: ['snapShare', 'opportunitiesPerSnap', 'catchRate', 'yardsPerTouch', 'touchdownsPerTouch', 'fantasyPointsPerOpportunity'] },
+  { label: 'Transitions · efficiency', keys: ['snapShare', 'opportunitiesPerSnap', 'catchRate', 'yardsPerTouch', 'touchdownsPerTouch'] },
 ];
 const FLEX_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
   { label: 'Shared layers · volume', keys: ['teamPlays', 'snaps', 'targets', 'receptions', 'receivingYards', 'receivingTouchdowns'] },
   { label: 'RB + composite layers', keys: ['opportunities', 'carries', 'yards', 'rushingYards', 'touchdowns', 'rushingTouchdowns'] },
-  { label: 'Shared transitions', keys: ['snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch', 'fantasyPointsPerOpportunity'] },
+  { label: 'Shared transitions', keys: ['snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch'] },
   { label: 'RB + composite transitions', keys: ['opportunitiesPerSnap', 'yardsPerTouch', 'touchdownsPerTouch'] },
 ];
 const QB_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
   { label: 'Overview', keys: ['ppr', 'stackScore'] },
   { label: 'Stack layers · volume', keys: ['teamPlays', 'snaps', 'passingAttempts', 'negativePlays', 'sacks', 'interceptions', 'completions', 'passingYards', 'passingTouchdowns'] },
-  { label: 'Transitions · efficiency', keys: ['snapShare', 'attemptsPerSnap', 'cleanDropbackRate', 'completionRate', 'yardsPerAttempt', 'touchdownsPerAttempt', 'fantasyPointsPerOpportunity', 'sackRate', 'interceptionRate'] },
+  { label: 'Transitions · efficiency', keys: ['snapShare', 'attemptsPerSnap', 'cleanDropbackRate', 'completionRate', 'yardsPerAttempt', 'touchdownsPerAttempt', 'sackRate', 'interceptionRate'] },
 ];
 
 const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
@@ -121,11 +120,11 @@ function PlayerStack({
   const receiverLayers: StackLayer[] = [
     { label: 'Team plays', value: volume(profile.teamPlays) },
     { label: 'Snaps', value: volume(profile.snaps), rate: `${percent(profile.snapShare)} snap share` },
-    { label: 'Targets', value: volume(profile.targets), rate: `${percent(profile.targetsPerSnap)} / snap` },
-    { label: 'Catches', value: volume(profile.receptions), rate: `${percent(profile.catchRate)} caught` },
-    { label: 'Yards', value: volume(profile.yards), rate: `${decimal.format(profile.yardsPerCatch)} / catch` },
-    { label: 'TD', value: volume(profile.touchdowns), rate: `${percent(profile.touchdownsPerCatch)} / catch` },
-    { label: 'Fantasy pts', value: volume(profile.fantasyPoints), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / target` },
+    { label: 'Targets', value: volume(profile.targets), rate: `${percent(profile.targetsPerSnap)} Target rate` },
+    { label: 'Catches', value: volume(profile.receptions), rate: `${percent(profile.catchRate)} catch rate` },
+    { label: 'Yards', value: volume(profile.yards), rate: `${decimal.format(profile.yardsPerCatch)} yards per catch` },
+    { label: 'TD', value: volume(profile.touchdowns), rate: `${percent(profile.touchdownsPerCatch)} TD rate` },
+    { label: 'Fantasy pts', value: volume(profile.fantasyPoints) },
   ];
   const runningBackLayers: StackLayer[] = [
     { label: 'Team plays', value: volume(profile.teamPlays) },
@@ -133,23 +132,23 @@ function PlayerStack({
     {
       label: 'Touches + targets',
       value: volume(profile.opportunities),
-      rate: `${percent(profile.opportunitiesPerSnap)} / snap`,
+      rate: `${percent(profile.opportunitiesPerSnap)} usage rate`,
       split: { primary: profile.carries, secondary: profile.targets, description: `${splitValue(profile.carries, 'rushing touches')} · ${splitValue(profile.targets, 'targets')}` },
     },
-    { label: 'Catches', value: volume(profile.receptions), rate: `${percent(profile.catchRate)} caught`, receivingOnly: true },
+    { label: 'Catches', value: volume(profile.receptions), rate: `${percent(profile.catchRate)} catch rate`, receivingOnly: true },
     {
       label: 'Scrim yards',
       value: volume(profile.yards),
-      rate: `${decimal.format(profile.yardsPerTouch)} / touch`,
+      rate: `${decimal.format(profile.yardsPerTouch)} yards per touch`,
       split: { primary: profile.rushingYards, secondary: profile.receivingYards, description: `${splitValue(profile.rushingYards, 'rushing yards')} · ${splitValue(profile.receivingYards, 'receiving yards')}` },
     },
     {
       label: 'Total TD',
       value: volume(profile.touchdowns),
-      rate: `${percent(profile.touchdownsPerTouch)} / touch`,
+      rate: `${percent(profile.touchdownsPerTouch)} TD rate`,
       split: { primary: profile.rushingTouchdowns, secondary: profile.receivingTouchdowns, description: `${splitValue(profile.rushingTouchdowns, 'rushing TDs')} · ${splitValue(profile.receivingTouchdowns, 'receiving TDs')}` },
     },
-    { label: 'Fantasy pts', value: volume(profile.fantasyPoints), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / opportunity` },
+    { label: 'Fantasy pts', value: volume(profile.fantasyPoints) },
   ];
   const quarterbackLayers: StackLayer[] = [
     { label: 'Team plays', value: volume(profile.teamPlays) },
@@ -164,7 +163,7 @@ function PlayerStack({
     { label: 'Completions', value: volume(profile.completions), rate: `${percent(profile.completionRate)} complete` },
     { label: 'Pass yards', value: volume(profile.passingYards), rate: `${decimal.format(profile.yardsPerAttempt)} / attempt` },
     { label: 'Pass TD', value: volume(profile.passingTouchdowns), rate: `${percent(profile.touchdownsPerAttempt)} / attempt` },
-    { label: 'Fantasy pts', value: volume(profile.fantasyPoints), rate: `${decimal.format(profile.fantasyPointsPerOpportunity)} / attempt` },
+    { label: 'Fantasy pts', value: volume(profile.fantasyPoints) },
   ];
   const layers = profile.position === 'QB' ? quarterbackLayers : profile.position === 'RB' ? runningBackLayers : receiverLayers;
   const color = TEAM_COLORS[profile.team] ?? '#6e777a';
@@ -194,7 +193,7 @@ function PlayerStack({
         {[...layers].reverse().map((layer, reverseIndex) => {
           const index = layers.length - 1 - reverseIndex;
           const width = geometryMode === 'block' ? profile.blockWidths[index] : 17 + profile.widths[index] * 0.83;
-          const height = index === 0 ? 46 : 39 + profile.heights[index] * 0.23;
+          const height = layer.rate ? 39 + profile.heights[index] * 0.23 : 46;
           const splitTotal = (layer.split?.primary ?? 0) + (layer.split?.secondary ?? 0);
           const splitPercent = splitTotal > 0 ? ((layer.split?.primary ?? 0) / splitTotal) * 100 : 100;
           const tierClass = `tier tier-${reverseIndex}${layer.split ? ' split-tier' : ''}${layer.receivingOnly ? ' receiving-tier' : ''}`;
@@ -478,13 +477,13 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
             <div className="guide-grid">
               <div><strong>WIDTH</strong><p>How much volume a player produced compared with the currently qualified peer group.</p></div>
               <div><strong>GEOMETRY</strong><p>Trapezoid preserves the original percentile silhouette. Block uses rectangles spanning one-third to full width: Team Plays ranks across all teams, while player layers rank within the active view.</p></div>
-              <div><strong>HEIGHT</strong><p>How efficiently one stage converted into the next. Taller layers indicate a stronger rate.</p></div>
+              <div><strong>HEIGHT</strong><p>How efficiently one stage converted into the next. Taller layers indicate a stronger rate. Team Plays and Fantasy Points use fixed heights.</p></div>
               <div><strong>BULGES</strong><p>Useful signal, not a flaw. A wide yardage tier above modest catches identifies explosive production.</p></div>
               <div><strong>RB COLOR</strong><p>Team color shows rushing touches and production. The highlight color shows targets and receiving production.</p></div>
               <div><strong>QB COLOR</strong><p>The split loss layer separates sacks in team color from interceptions in the highlight color. Its height rewards clean dropbacks.</p></div>
               <div><strong>FP ECR RANGE</strong><p>Limits the field to the current FantasyPros redraft consensus range. The upper NR endpoint retains players without a current ranking.</p></div>
               <div><strong>NORMALIZE</strong><p>Total compares accumulated volume. Per game normalizes layer values, widths, fantasy points, and volume sorting for every selected time window.</p></div>
-              <div><strong>PPR SCORING</strong><p>Full adds 1 point per catch, Half adds 0.5, and Off removes the reception bonus. Fantasy-point geometry and sorting update immediately.</p></div>
+              <div><strong>PPR SCORING</strong><p>Full adds 1 point per catch, Half adds 0.5, and Off removes the reception bonus. Fantasy-point width and sorting update immediately.</p></div>
               <div><strong>LABELS</strong><p>The unnormalized truth: raw totals and the exact rate that controls each layer’s height.</p></div>
             </div>
             <button className="modal-done" onClick={() => setGuideOpen(false)}>Explore the stacks</button>

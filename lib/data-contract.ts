@@ -128,8 +128,7 @@ export type SortKey =
   | 'yardsPerAttempt'
   | 'touchdownsPerAttempt'
   | 'interceptionRate'
-  | 'sackRate'
-  | 'fantasyPointsPerOpportunity';
+  | 'sackRate';
 
 export interface Profile {
   playerId: string;
@@ -177,7 +176,6 @@ export interface Profile {
   touchdownsPerAttempt: number;
   interceptionRate: number;
   sackRate: number;
-  fantasyPointsPerOpportunity: number;
   widths: number[];
   blockWidths: number[];
   heights: number[];
@@ -319,7 +317,6 @@ export function aggregateProfiles(
         touchdownsPerAttempt: safeRate(profile.passingTouchdowns, profile.passingAttempts),
         interceptionRate: safeRate(profile.interceptions, profile.passingAttempts),
         sackRate: safeRate(profile.sacks, dropbacks),
-        fantasyPointsPerOpportunity: safeRate(fantasyPoints, opportunities),
         widths: [], blockWidths: [], heights: [], stackScore: 0,
       };
     });
@@ -332,10 +329,10 @@ export function aggregateProfiles(
   const volumeValues = (profile: Profile) => totalVolumeValues(profile).map((value) =>
     volumeMode === 'perGame' ? safeRate(value, profile.games) : value);
   const efficiencyValues = (profile: Profile) => profile.position === 'QB'
-    ? [profile.snapShare, profile.attemptsPerSnap, profile.cleanDropbackRate, profile.completionRate, profile.yardsPerAttempt, profile.touchdownsPerAttempt, profile.fantasyPointsPerOpportunity]
+    ? [profile.snapShare, profile.attemptsPerSnap, profile.cleanDropbackRate, profile.completionRate, profile.yardsPerAttempt, profile.touchdownsPerAttempt]
     : profile.position === 'RB'
-      ? [profile.snapShare, profile.opportunitiesPerSnap, profile.catchRate, profile.yardsPerTouch, profile.touchdownsPerTouch, profile.fantasyPointsPerOpportunity]
-      : [profile.snapShare, profile.targetsPerSnap, profile.catchRate, profile.yardsPerCatch, profile.touchdownsPerCatch, profile.fantasyPointsPerOpportunity];
+      ? [profile.snapShare, profile.opportunitiesPerSnap, profile.catchRate, profile.yardsPerTouch, profile.touchdownsPerTouch]
+      : [profile.snapShare, profile.targetsPerSnap, profile.catchRate, profile.yardsPerCatch, profile.touchdownsPerCatch];
   const volumeMatrix = profiles.map(volumeValues);
   const efficiencyMatrix = profiles.map(efficiencyValues);
   const teamPlayTotals = new Map<string, { plays: number; games: number }>();
@@ -362,8 +359,8 @@ export function aggregateProfiles(
       const lowerIsBetter = profile.position === 'QB' && index === 3;
       return rankedBlockWidth(value, volumeMatrix.map((candidate) => candidate[index]), lowerIsBetter);
     });
-    profile.heights = [0, ...efficiencyValues(profile).map((value, index) => percentile(value, efficiencyMatrix.map((candidate) => candidate[index])))];
-    const scoreParts = [...profile.widths.slice(1), ...profile.heights.slice(1)];
+    profile.heights = [0, ...efficiencyValues(profile).map((value, index) => percentile(value, efficiencyMatrix.map((candidate) => candidate[index]))), 0];
+    const scoreParts = [...profile.widths.slice(1), ...profile.heights.slice(1, -1)];
     profile.stackScore = scoreParts.reduce((a, b) => a + b, 0) / scoreParts.length;
   }
 
@@ -404,7 +401,6 @@ export function aggregateProfiles(
     touchdownsPerAttempt: (profile) => profile.touchdownsPerAttempt,
     interceptionRate: (profile) => profile.interceptionRate,
     sackRate: (profile) => profile.sackRate,
-    fantasyPointsPerOpportunity: (profile) => profile.fantasyPointsPerOpportunity,
   };
   const volumeSortKeys = new Set<SortKey>([
     'ppr', 'teamPlays', 'snaps', 'opportunities', 'carries', 'targets', 'receptions',
