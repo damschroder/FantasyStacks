@@ -211,6 +211,138 @@ function TeamPicker({
   );
 }
 
+function PlayerSearchControl({
+  value,
+  candidates,
+  relatedSearch,
+  onChange,
+  onToggleRelated,
+}: {
+  value: string;
+  candidates: Profile[];
+  relatedSearch: boolean;
+  onChange: (value: string) => void;
+  onToggleRelated: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const query = value.trim().toLocaleLowerCase();
+  const suggestions = useMemo(() => {
+    if (!query) return [];
+    return candidates
+      .filter((profile) => profile.name.toLocaleLowerCase().includes(query))
+      .sort((a, b) => {
+        const aName = a.name.toLocaleLowerCase();
+        const bName = b.name.toLocaleLowerCase();
+        const aMatch = aName === query ? 0 : aName.startsWith(query) ? 1 : 2;
+        const bMatch = bName === query ? 0 : bName.startsWith(query) ? 1 : 2;
+        return aMatch - bMatch
+          || (a.ecr ?? Number.POSITIVE_INFINITY) - (b.ecr ?? Number.POSITIVE_INFINITY)
+          || a.name.localeCompare(b.name);
+      })
+      .slice(0, 8);
+  }, [candidates, query]);
+  const selectedIndex = Math.min(activeIndex, Math.max(0, suggestions.length - 1));
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!searchRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
+  }, [open]);
+
+  const selectPlayer = (profile: Profile) => {
+    onChange(profile.name);
+    setOpen(false);
+    setActiveIndex(0);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div className="player-search-label" ref={searchRef}>
+      <span>PLAYER SEARCH</span>
+      <div className="player-search-input">
+        <input
+          ref={inputRef}
+          type="search"
+          role="combobox"
+          value={value}
+          placeholder="Search players"
+          aria-label="Search players by name"
+          aria-autocomplete="list"
+          aria-expanded={open && suggestions.length > 0}
+          aria-controls="player-search-suggestions"
+          aria-activedescendant={open && suggestions.length > 0 ? `player-search-option-${suggestions[selectedIndex].playerId}` : undefined}
+          onFocus={() => setOpen(query.length > 0 && suggestions.length > 0)}
+          onChange={(event) => {
+            onChange(event.target.value);
+            setActiveIndex(0);
+            setOpen(event.target.value.trim().length > 0);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown' && suggestions.length > 0) {
+              event.preventDefault();
+              setOpen(true);
+              setActiveIndex((current) => (current + 1) % suggestions.length);
+            } else if (event.key === 'ArrowUp' && suggestions.length > 0) {
+              event.preventDefault();
+              setOpen(true);
+              setActiveIndex((current) => (current - 1 + suggestions.length) % suggestions.length);
+            } else if (event.key === 'Enter' && open && suggestions.length > 0) {
+              event.preventDefault();
+              selectPlayer(suggestions[selectedIndex]);
+            } else if (event.key === 'Escape') {
+              setOpen(false);
+            }
+          }}
+        />
+        <button
+          type="button"
+          className={relatedSearch ? 'active' : ''}
+          aria-pressed={relatedSearch}
+          disabled={!query && !relatedSearch}
+          title={relatedSearch ? 'Return to all matching players' : 'Show three stronger and three weaker related players'}
+          onClick={onToggleRelated}
+        >
+          {relatedSearch ? 'All' : 'Related'}
+        </button>
+      </div>
+      {open && suggestions.length > 0 && (
+        <ul className="player-search-suggestions" id="player-search-suggestions" role="listbox" aria-label="Player search suggestions">
+          {suggestions.map((profile, index) => {
+            const initials = profile.name.split(' ').map((part) => part[0]).join('').slice(0, 2);
+            return (
+              <li
+                id={`player-search-option-${profile.playerId}`}
+                key={profile.playerId}
+                role="option"
+                aria-selected={index === selectedIndex}
+                className={index === selectedIndex ? 'active' : ''}
+                onPointerMove={() => setActiveIndex(index)}
+                onPointerDown={(event) => event.preventDefault()}
+                onClick={() => selectPlayer(profile)}
+              >
+                <span className="player-search-photo" aria-hidden="true">
+                  <span>{initials}</span>
+                  {profile.headshotUrl && <Image src={profile.headshotUrl} alt="" width={36} height={36} loading="lazy" unoptimized />}
+                </span>
+                <span className="player-search-candidate">
+                  <strong>{profile.name}</strong>
+                  <small>{profile.team} · {profile.position}{profile.ecr != null ? ` · FP ECR ${integer.format(profile.ecr)}` : ' · ECR NR'}</small>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function PlayerStack({
   profile,
   rank,
@@ -582,28 +714,13 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       <section className="results-head">
         <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey](dataset.manifest.season).toUpperCase()}`}</p>
         <div className="results-tools">
-          <div className="player-search-label">
-            <span>PLAYER SEARCH</span>
-            <div className="player-search-input">
-              <input
-                type="search"
-                value={playerSearch}
-                placeholder="Search players"
-                aria-label="Search players by name"
-                onChange={(event) => { setPlayerSearch(event.target.value); setShown(density * 3); }}
-              />
-              <button
-                type="button"
-                className={relatedSearch ? 'active' : ''}
-                aria-pressed={relatedSearch}
-                disabled={!normalizedSearch && !relatedSearch}
-                title={relatedSearch ? 'Return to all matching players' : 'Show three stronger and three weaker related players'}
-                onClick={() => { setRelatedSearch((current) => !current); setCompareMode(false); }}
-              >
-                {relatedSearch ? 'All' : 'Related'}
-              </button>
-            </div>
-          </div>
+          <PlayerSearchControl
+            value={playerSearch}
+            candidates={rankedProfiles}
+            relatedSearch={relatedSearch}
+            onChange={(nextValue) => { setPlayerSearch(nextValue); setShown(density * 3); }}
+            onToggleRelated={() => { setRelatedSearch((current) => !current); setCompareMode(false); }}
+          />
           <label className="ecr-label">
             <span>FP ECR RANGE <output>{integer.format(minEcr)}–{maxEcr === ecrUnrankedSentinel ? 'NR' : integer.format(maxEcr)}</output></span>
             <span
