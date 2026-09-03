@@ -133,6 +133,7 @@ export type SortKey =
 export interface Profile {
   playerId: string;
   name: string;
+  headshotUrl: string | null;
   position: Position;
   team: string;
   ecr: number | null;
@@ -233,7 +234,7 @@ export function aggregateProfiles(
   const players = new Map(dataset.players.map((player) => [player.playerId, player]));
   const teamGames = new Map(dataset.teamGames.map((game) => [`${game.gameId}:${game.team}`, game]));
   type Accumulator = Pick<Profile,
-    'playerId' | 'name' | 'position' | 'team' | 'ecr' | 'games' | 'possessions' | 'teamPlays' | 'snaps'
+    'playerId' | 'name' | 'headshotUrl' | 'position' | 'team' | 'ecr' | 'games' | 'possessions' | 'teamPlays' | 'snaps'
     | 'passingAttempts' | 'completions' | 'passingYards' | 'passingTouchdowns' | 'interceptions' | 'sacks'
     | 'carries' | 'targets' | 'receptions' | 'rushingYards' | 'receivingYards'
     | 'rushingTouchdowns' | 'receivingTouchdowns' | 'ppr'>;
@@ -249,7 +250,7 @@ export function aggregateProfiles(
     if (!player) continue;
     const context = teamGames.get(`${game.gameId}:${game.team}`);
     const current = accumulators.get(game.playerId) ?? {
-      playerId: game.playerId, name: player.name, position: game.position, team: game.team, ecr: player.ecr,
+      playerId: game.playerId, name: player.name, headshotUrl: player.headshotUrl, position: game.position, team: game.team, ecr: player.ecr,
       games: 0, possessions: 0, teamPlays: 0, snaps: 0,
       passingAttempts: 0, completions: 0, passingYards: 0, passingTouchdowns: 0, interceptions: 0, sacks: 0,
       carries: 0, targets: 0,
