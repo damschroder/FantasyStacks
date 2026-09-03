@@ -270,15 +270,20 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const [shown, setShown] = useState(24);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [playerSearch, setPlayerSearch] = useState('');
 
   const teams = useMemo(() => [...new Set(dataset.playerGames.map((game) => game.team))].sort(), [dataset]);
-  const profiles = useMemo(
+  const rankedProfiles = useMemo(
     () => {
       const ranked = aggregateProfiles(dataset, windowKey, position, team, minGames, minTargets, minEcr, Math.min(maxEcr, rankedEcrCeiling), maxEcr === ecrUnrankedSentinel, volumeMode, scoringMode, sortKey);
       return sortDirection === 'desc' ? ranked : [...ranked].reverse();
     },
     [dataset, windowKey, position, team, minGames, minTargets, minEcr, maxEcr, rankedEcrCeiling, ecrUnrankedSentinel, volumeMode, scoringMode, sortKey, sortDirection],
   );
+  const profiles = useMemo(() => {
+    const query = playerSearch.trim().toLocaleLowerCase();
+    return query ? rankedProfiles.filter((profile) => profile.name.toLocaleLowerCase().includes(query)) : rankedProfiles;
+  }, [rankedProfiles, playerSearch]);
   const comparisonProfiles = useMemo(
     () => profiles.filter((profile) => pinned.includes(profile.playerId)),
     [profiles, pinned],
@@ -392,6 +397,16 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       <section className="results-head">
         <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey].toUpperCase()}`}</p>
         <div className="results-tools">
+          <label className="player-search-label">
+            <span>PLAYER SEARCH</span>
+            <input
+              type="search"
+              value={playerSearch}
+              placeholder="Search players"
+              aria-label="Search players by name"
+              onChange={(event) => { setPlayerSearch(event.target.value); setShown(density * 3); }}
+            />
+          </label>
           <label className="ecr-label">
             <span>FP ECR RANGE <output>{integer.format(minEcr)}–{maxEcr === ecrUnrankedSentinel ? 'NR' : integer.format(maxEcr)}</output></span>
             <span
@@ -483,13 +498,13 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         <>
           <section className="player-grid" data-density={density} data-geometry={geometryMode} style={{ '--density': density } as React.CSSProperties}>
             {visibleProfiles.map((profile) => (
-              <PlayerStack key={profile.playerId} profile={profile} rank={profiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} volumeMode={volumeMode} geometryMode={geometryMode} onTogglePin={() => togglePin(profile.playerId)} />
+              <PlayerStack key={profile.playerId} profile={profile} rank={rankedProfiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} volumeMode={volumeMode} geometryMode={geometryMode} onTogglePin={() => togglePin(profile.playerId)} />
             ))}
           </section>
           {!compareMode && shown < displayProfiles.length && <button className="load-more" onClick={() => setShown((current) => current + density * 3)}>Show 3 more rows <span>↓</span></button>}
         </>
       ) : (
-        <section className="empty-state"><strong>{compareMode ? 'No selected stacks in this view.' : 'No qualified players.'}</strong><p>{compareMode ? 'Show all stacks or loosen the filters to restore the comparison.' : 'Loosen the minimum games or usage filter to widen the field.'}</p></section>
+        <section className="empty-state"><strong>{compareMode ? 'No selected stacks in this view.' : playerSearch.trim() ? 'No matching players.' : 'No qualified players.'}</strong><p>{compareMode ? 'Show all stacks or loosen the filters to restore the comparison.' : playerSearch.trim() ? 'Try another player name or clear the search.' : 'Loosen the minimum games or usage filter to widen the field.'}</p></section>
       )}
 
       <footer>

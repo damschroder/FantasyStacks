@@ -40,7 +40,9 @@ h1 { margin: 0; max-width: 980px; font-size: clamp(34px, 3.9vw, 56px); line-heig
 .results-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin: 34px 4vw 14px; }
 .results-head p { margin: 0; font-size: 11px; }
 .results-tools { --slider-width: clamp(170px, 13vw, 220px); display: flex; align-items: flex-start; justify-content: flex-end; flex-wrap: wrap; column-gap: 24px; row-gap: 14px; }
-.density-label, .ecr-label, .geometry-label, .sort-label { display: grid; grid-template-rows: auto 32px; gap: 7px; font: 700 10px/1 monospace; letter-spacing: .1em; color: var(--muted); }
+.density-label, .ecr-label, .geometry-label, .sort-label, .player-search-label { display: grid; grid-template-rows: auto 32px; gap: 7px; font: 700 10px/1 monospace; letter-spacing: .1em; color: var(--muted); }
+.player-search-label input { width: clamp(150px, 12vw, 190px); height: 32px; border: 1px solid var(--ink); border-radius: 0; background: transparent; color: var(--ink); padding: 0 10px; font: 700 12px/1 Arial, sans-serif; outline-offset: 2px; }
+.player-search-label input::placeholder { color: var(--muted); font-weight: 500; }
 .density-label > span:first-child, .ecr-label > span:first-child { display: flex; justify-content: space-between; gap: 12px; }
 .density-label output, .ecr-label output { color: var(--ink); font: 800 10px/1 monospace; letter-spacing: .04em; }
 .ecr-range { position: relative; display: block; width: var(--slider-width); height: 32px; }
