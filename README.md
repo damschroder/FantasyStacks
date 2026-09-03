@@ -20,6 +20,8 @@ Quarterback stacks use the same team-plays base, then show player snaps, pass at
 
 The Geometry control switches between the original Trapezoid silhouette and rectangular Blocks. Trapezoid width is the player’s percentile for raw volume among the currently qualified cohort. Block widths span exactly one-third to full width: the Team Plays base ranks against all teams in the selected window, and each player layer ranks against the currently qualified player universe. For the quarterback loss layer, fewer sacks plus interceptions ranks better. Transition-layer height remains the percentile of its rate; Team Plays and Fantasy Points use fixed heights. Geometry is calculated after filtering; it is never stored in the source dataset.
 
+The Color control switches between Origional team-led color and Flow. Flow renders Team Plays, Snaps, and targets/touches/passes as three greys for unscored opportunity; catches/completions, yards, and touchdowns progress through amber, orange, and red; Fantasy Points is the lime outcome cap. RB and QB split layers retain their internal distinctions in both modes.
+
 The two-sided FP ECR control filters the cohort by the current FantasyPros redraft-overall expert consensus ranking distributed through nflverse/DynastyProcess. Its NR endpoint preserves players without a current ranking. Stack geometry recalculates within the selected ECR range.
 
 Time windows cover the latest week, trailing three and five games, the 2025 season, and the 2024 season. The independent Total / Per game setting controls displayed layer volume, width percentiles, fantasy points, volume sorting, and stack score without changing transition-rate heights.
