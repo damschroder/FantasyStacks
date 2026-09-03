@@ -178,6 +178,7 @@ export interface Profile {
   sackRate: number;
   widths: number[];
   blockWidths: number[];
+  layerRanks: Array<{ rank: number; total: number }>;
   heights: number[];
   stackScore: number;
 }
@@ -196,6 +197,13 @@ function rankedBlockWidth(value: number, values: number[], lowerIsBetter = false
   const rankIndex = rankedValues.indexOf(value);
   const rank = lowerIsBetter ? rankedValues.length - 1 - rankIndex : rankIndex;
   return (1 / 3 + (rank / (rankedValues.length - 1)) * 2 / 3) * 100;
+}
+
+function metricRank(value: number, values: number[], lowerIsBetter = false): { rank: number; total: number } {
+  const comparisonValues = values.length ? values : [value];
+  const better = comparisonValues.reduce((total, candidate) =>
+    total + ((lowerIsBetter ? candidate < value : candidate > value) ? 1 : 0), 0);
+  return { rank: better + 1, total: comparisonValues.length };
 }
 
 export function aggregateProfiles(
@@ -317,7 +325,7 @@ export function aggregateProfiles(
         touchdownsPerAttempt: safeRate(profile.passingTouchdowns, profile.passingAttempts),
         interceptionRate: safeRate(profile.interceptions, profile.passingAttempts),
         sackRate: safeRate(profile.sacks, dropbacks),
-        widths: [], blockWidths: [], heights: [], stackScore: 0,
+        widths: [], blockWidths: [], layerRanks: [], heights: [], stackScore: 0,
       };
     });
 
@@ -350,7 +358,9 @@ export function aggregateProfiles(
   const teamPlayValues = [...teamPlayBenchmarks.values()];
   for (const profile of profiles) {
     const profileVolumes = volumeValues(profile);
-    profile.widths = profileVolumes.map((value, index) => percentile(value, volumeMatrix.map((candidate) => candidate[index])));
+    profile.widths = profileVolumes.map((value, index) => index === 0
+      ? percentile(teamPlayBenchmarks.get(profile.team) ?? value, teamPlayValues)
+      : percentile(value, volumeMatrix.map((candidate) => candidate[index])));
     profile.blockWidths = profileVolumes.map((value, index) => {
       if (index === 0) {
         const teamValue = teamPlayBenchmarks.get(profile.team) ?? value;
@@ -358,6 +368,13 @@ export function aggregateProfiles(
       }
       const lowerIsBetter = profile.position === 'QB' && index === 3;
       return rankedBlockWidth(value, volumeMatrix.map((candidate) => candidate[index]), lowerIsBetter);
+    });
+    profile.layerRanks = profileVolumes.map((value, index) => {
+      if (index === 0) {
+        return metricRank(teamPlayBenchmarks.get(profile.team) ?? value, teamPlayValues);
+      }
+      const lowerIsBetter = profile.position === 'QB' && index === 3;
+      return metricRank(value, volumeMatrix.map((candidate) => candidate[index]), lowerIsBetter);
     });
     profile.heights = [0, ...efficiencyValues(profile).map((value, index) => percentile(value, efficiencyMatrix.map((candidate) => candidate[index]))), 0];
     const scoreParts = [...profile.widths.slice(1), ...profile.heights.slice(1, -1)];
