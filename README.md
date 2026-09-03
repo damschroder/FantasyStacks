@@ -18,13 +18,13 @@ The FLEX view combines RB, WR, and TE stacks in one qualified field while preser
 
 Quarterback stacks use the same team-plays base, then show player snaps, pass attempts, sacks plus interceptions, completions, passing yards, passing touchdowns, and fantasy points. The loss-event layer splits sacks from interceptions by color; its height represents the percentage of dropbacks that avoided either outcome.
 
-The Geometry control switches between the original Trapezoid silhouette and rectangular Blocks. Trapezoid width is the player’s percentile for raw volume among the currently qualified cohort. Block widths span exactly one-third to full width: the Team Plays base ranks against all teams in the selected window, and each player layer ranks against the currently qualified player universe. For the quarterback loss layer, fewer sacks plus interceptions ranks better. Layer height remains the percentile of the transition rate into that layer. Geometry is calculated after filtering; it is never stored in the source dataset.
+The Geometry control switches between the original Trapezoid silhouette and rectangular Blocks. Trapezoid width is the player’s percentile for raw volume among the currently qualified cohort. Block widths span exactly one-third to full width: the Team Plays base ranks against all teams in the selected window, and each player layer ranks against the currently qualified player universe. For the quarterback loss layer, fewer sacks plus interceptions ranks better. Transition-layer height remains the percentile of its rate; Team Plays and Fantasy Points use fixed heights. Geometry is calculated after filtering; it is never stored in the source dataset.
 
 The two-sided FP ECR control filters the cohort by the current FantasyPros redraft-overall expert consensus ranking distributed through nflverse/DynastyProcess. Its NR endpoint preserves players without a current ranking. Stack geometry recalculates within the selected ECR range.
 
 Time windows cover the latest week, trailing three and five games, the 2025 season, and the 2024 season. The independent Total / Per game setting controls displayed layer volume, width percentiles, fantasy points, volume sorting, and stack score without changing transition-rate heights.
 
-The PPR control switches between Full, Half, and Off. The app retains full-PPR source facts and derives the other modes by applying 0.5 or 0 reception points, so the Fantasy Points layer, points-per-opportunity transition, sorting, widths, and stack score all update without rewriting the underlying records.
+The PPR control switches between Full, Half, and Off. The app retains full-PPR source facts and derives the other modes by applying 0.5 or 0 reception points, so the Fantasy Points layer, sorting, widths, and stack score all update without rewriting the underlying records. Fantasy Points has no transition metric.
 
 ## Run locally
 
