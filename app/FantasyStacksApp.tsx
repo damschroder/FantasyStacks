@@ -25,6 +25,7 @@ const WINDOW_LABELS: Record<WindowKey, (season: number) => string> = {
 };
 const SORT_LABELS: Record<SortKey, string> = {
   ppr: 'Fantasy points',
+  ecr: 'FP ECR',
   stackScore: 'Stack score',
   teamPlays: 'Team plays',
   snaps: 'Offensive snaps',
@@ -62,29 +63,29 @@ const SORT_LABELS: Record<SortKey, string> = {
   sackRate: 'Sack rate',
 };
 const RECEIVER_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
-  { label: 'Overview', keys: ['ppr', 'stackScore'] },
+  { label: 'Overview', keys: ['ppr', 'ecr', 'stackScore'] },
   { label: 'Stack layers · volume', keys: ['teamPlays', 'snaps', 'targets', 'receptions', 'yards', 'touchdowns'] },
   { label: 'Transitions · efficiency', keys: ['snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch'] },
 ];
 const RB_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
-  { label: 'Overview', keys: ['ppr', 'stackScore'] },
+  { label: 'Overview', keys: ['ppr', 'ecr', 'stackScore'] },
   { label: 'Stack layers · volume', keys: ['teamPlays', 'snaps', 'opportunities', 'carries', 'targets', 'receptions', 'yards', 'rushingYards', 'receivingYards', 'touchdowns', 'rushingTouchdowns', 'receivingTouchdowns'] },
   { label: 'Transitions · efficiency', keys: ['snapShare', 'opportunitiesPerSnap', 'catchRate', 'yardsPerTouch', 'touchdownsPerTouch'] },
 ];
 const FLEX_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
-  { label: 'Overview', keys: ['ppr', 'stackScore'] },
+  { label: 'Overview', keys: ['ppr', 'ecr', 'stackScore'] },
   { label: 'Shared layers · volume', keys: ['teamPlays', 'snaps', 'targets', 'receptions', 'receivingYards', 'receivingTouchdowns'] },
   { label: 'RB + composite layers', keys: ['opportunities', 'carries', 'yards', 'rushingYards', 'touchdowns', 'rushingTouchdowns'] },
   { label: 'Shared transitions', keys: ['snapShare', 'targetsPerSnap', 'catchRate', 'yardsPerCatch', 'touchdownsPerCatch'] },
   { label: 'RB + composite transitions', keys: ['opportunitiesPerSnap', 'yardsPerTouch', 'touchdownsPerTouch'] },
 ];
 const QB_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
-  { label: 'Overview', keys: ['ppr', 'stackScore'] },
+  { label: 'Overview', keys: ['ppr', 'ecr', 'stackScore'] },
   { label: 'Stack layers · volume', keys: ['teamPlays', 'snaps', 'passingAttempts', 'negativePlays', 'sacks', 'interceptions', 'completions', 'passingYards', 'passingTouchdowns'] },
   { label: 'Transitions · efficiency', keys: ['snapShare', 'attemptsPerSnap', 'cleanDropbackRate', 'completionRate', 'yardsPerAttempt', 'touchdownsPerAttempt', 'sackRate', 'interceptionRate'] },
 ];
 const ALL_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
-  { label: 'Overview', keys: ['ppr', 'stackScore'] },
+  { label: 'Overview', keys: ['ppr', 'ecr', 'stackScore'] },
   { label: 'Shared layers · volume', keys: ['teamPlays', 'snaps'] },
   { label: 'FLEX layers · volume', keys: ['opportunities', 'carries', 'targets', 'receptions', 'yards', 'rushingYards', 'receivingYards', 'touchdowns', 'rushingTouchdowns', 'receivingTouchdowns'] },
   { label: 'QB layers · volume', keys: ['passingAttempts', 'negativePlays', 'sacks', 'interceptions', 'completions', 'passingYards', 'passingTouchdowns'] },
@@ -796,11 +797,11 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               <button
                 type="button"
                 className="sort-direction"
-                aria-label={`Sort ${sortDirection === 'desc' ? 'ascending' : 'descending'}`}
-                title={`Currently ${sortDirection === 'desc' ? 'highest first' : 'lowest first'}. Reverse order.`}
+                aria-label={`Reverse sort order; currently ${sortKey === 'ecr' ? sortDirection === 'desc' ? 'best ECR first' : 'worst ECR first' : sortDirection === 'desc' ? 'highest first' : 'lowest first'}`}
+                title={`Currently ${sortKey === 'ecr' ? sortDirection === 'desc' ? 'best ECR first' : 'worst ECR first' : sortDirection === 'desc' ? 'highest first' : 'lowest first'}. Reverse order.`}
                 onClick={() => { setSortDirection((current) => current === 'desc' ? 'asc' : 'desc'); setShown(density * 3); }}
               >
-                <span aria-hidden="true">{sortDirection === 'desc' ? '↓' : '↑'}</span>
+                <span aria-hidden="true">{sortKey === 'ecr' ? sortDirection === 'desc' ? '↑' : '↓' : sortDirection === 'desc' ? '↓' : '↑'}</span>
               </button>
             </div>
           </div>
