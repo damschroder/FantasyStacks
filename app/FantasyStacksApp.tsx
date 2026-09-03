@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import {
   aggregateProfiles,
@@ -119,6 +119,92 @@ const layerColorClass = (label: string) => {
 
 function BrandMark() {
   return <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>;
+}
+
+function TeamPicker({
+  team,
+  teams,
+  onChange,
+}: {
+  team: string;
+  teams: string[];
+  onChange: (team: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const selectedLogo = TEAM_LOGOS[team];
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!pickerRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open]);
+
+  const selectTeam = (nextTeam: string) => {
+    onChange(nextTeam);
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+
+  const teamIcon = (teamCode: string) => {
+    const logo = TEAM_LOGOS[teamCode];
+    return logo
+      ? <Image className="team-picker-logo" src={logo} alt="" width={26} height={26} loading="lazy" unoptimized />
+      : <span className="all-team-icon" aria-hidden="true">32</span>;
+  };
+
+  return (
+    <div className="team-picker" ref={pickerRef}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="team-picker-trigger"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls="team-filter-menu"
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+      >
+        <span className="team-picker-value">
+          {selectedLogo
+            ? <Image className="team-picker-logo" src={selectedLogo} alt="" width={26} height={26} loading="lazy" unoptimized />
+            : <span className="all-team-icon" aria-hidden="true">32</span>}
+          <strong>{team}</strong>
+        </span>
+        <span className="team-picker-caret" aria-hidden="true">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="team-picker-menu" id="team-filter-menu" role="menu" aria-label="Select an NFL team">
+          <button type="button" role="menuitemradio" aria-checked={team === 'ALL'} className={team === 'ALL' ? 'selected' : ''} onClick={() => selectTeam('ALL')}>
+            {teamIcon('ALL')}<strong>ALL</strong>
+          </button>
+          {teams.map((teamCode) => (
+            <button type="button" role="menuitemradio" aria-checked={team === teamCode} className={team === teamCode ? 'selected' : ''} key={teamCode} onClick={() => selectTeam(teamCode)}>
+              {teamIcon(teamCode)}<strong>{teamCode}</strong>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function PlayerStack({
@@ -413,7 +499,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 
       {filtersOpen && (
         <section className="filter-panel" aria-label="Minimum qualification filters">
-          <label>TEAM<select value={team} onChange={(event) => setTeam(event.target.value)}><option value="ALL">All teams</option>{teams.map((value) => <option key={value}>{value}</option>)}</select></label>
+          <div className="filter-field"><span>TEAM</span><TeamPicker team={team} teams={teams} onChange={setTeam} /></div>
           <label>MIN. GAMES<select value={minGames} onChange={(event) => setMinGames(Number(event.target.value))}>{[1, 2, 3, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <label>MIN. {position === 'ALL' ? 'USAGE' : position === 'QB' ? 'PASSES' : position === 'RB' || position === 'FLEX' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <button onClick={() => { setTeam('ALL'); setMinGames(minimumGamesForWindow(windowKey)); setMinTargets(2); }}>Reset filters</button>
