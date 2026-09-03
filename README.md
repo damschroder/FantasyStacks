@@ -26,6 +26,8 @@ The Color control switches between Origional team-led color and Flow. Flow rende
 
 The two-sided FP ECR control filters the cohort by the current FantasyPros redraft-overall expert consensus ranking distributed through nflverse/DynastyProcess. Its NR endpoint preserves players without a current ranking. Stack geometry recalculates within the selected ECR range.
 
+Player Search includes a Related mode. It anchors the searched player in the center of a seven-card desktop row, with up to three better-ECR comparisons on the left and three worse-ECR comparisons on the right. Candidate similarity favors nearby ECR and prior-season fantasy points, with stronger weight for the same position and a smaller same-team boost. Current qualification filters define the candidate universe.
+
 Time windows cover the latest week, trailing three and five games, the 2025 season, and the 2024 season. The independent Total / Per game setting controls displayed layer volume, width percentiles, fantasy points, volume sorting, and stack score without changing transition-rate heights.
 
 The PPR control switches between Full, Half, and Off. The app retains full-PPR source facts and derives the other modes by applying 0.5 or 0 reception points, so the Fantasy Points layer, sorting, widths, and stack score all update without rewriting the underlying records. Fantasy Points has no transition metric.

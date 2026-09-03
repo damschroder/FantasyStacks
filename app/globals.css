@@ -44,8 +44,12 @@ h1 { margin: 0; max-width: 980px; font-size: clamp(34px, 3.9vw, 56px); line-heig
 .results-head p { margin: 0; font-size: 11px; }
 .results-tools { --slider-width: clamp(170px, 13vw, 220px); display: flex; align-items: flex-start; justify-content: flex-end; flex-wrap: wrap; column-gap: 24px; row-gap: 14px; }
 .density-label, .ecr-label, .geometry-label, .color-label, .sort-label, .player-search-label { display: grid; grid-template-rows: auto 32px; gap: 7px; font: 700 10px/1 monospace; letter-spacing: .1em; color: var(--muted); }
+.player-search-input { height: 32px; display: flex; align-items: stretch; }
 .player-search-label input { width: clamp(150px, 12vw, 190px); height: 32px; border: 1px solid var(--ink); border-radius: 0; background: transparent; color: var(--ink); padding: 0 10px; font: 700 12px/1 Arial, sans-serif; outline-offset: 2px; }
 .player-search-label input::placeholder { color: var(--muted); font-weight: 500; }
+.player-search-input button { min-width: 68px; margin-left: -1px; border: 1px solid var(--ink); background: var(--paper); padding: 0 8px; color: var(--ink); font: 800 9px/1 monospace; letter-spacing: .05em; text-transform: uppercase; }
+.player-search-input button.active { background: var(--acid); color: var(--tier-ink); }
+.player-search-input button:disabled { cursor: not-allowed; opacity: .42; }
 .density-label > span:first-child, .ecr-label > span:first-child { display: flex; justify-content: space-between; gap: 12px; }
 .density-label output, .ecr-label output { color: var(--ink); font: 800 10px/1 monospace; letter-spacing: .04em; }
 .ecr-range { position: relative; display: block; width: var(--slider-width); height: 32px; }
@@ -93,6 +97,10 @@ h1 { margin: 0; max-width: 980px; font-size: clamp(34px, 3.9vw, 56px); line-heig
 .sort-direction { width: 34px; min-height: 32px; margin-left: -1px; border: 1px solid var(--ink); background: var(--paper); display: grid; place-items: center; font: 800 18px/1 monospace; }
 .sort-direction:hover { background: var(--acid); color: var(--tier-ink); }
 .player-grid { display: grid; grid-template-columns: repeat(var(--density, 3), minmax(0, 1fr)); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+.player-grid[data-related='true'] .player-card:first-child { grid-column-start: var(--related-start, 1); }
+.related-scale { margin: 0 4vw 8px; display: grid; grid-template-columns: 3fr 1fr 3fr; align-items: center; color: var(--muted); font: 800 8px/1 monospace; letter-spacing: .1em; }
+.related-scale span:last-child { text-align: right; }
+.related-scale strong { justify-self: center; border: 1px solid var(--ink); background: var(--acid); padding: 5px 7px; color: var(--tier-ink); font: inherit; white-space: nowrap; }
 .player-card { position: relative; min-width: 0; padding: 18px 2.4vw; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; transition: background-color .18s ease; }
 .player-grid:is([data-density='4'], [data-density='5']) .player-card { padding-inline: 1.7vw; }
 .player-grid:is([data-density='6'], [data-density='7']) .player-card { padding-inline: 1vw; }
@@ -102,6 +110,7 @@ h1 { margin: 0; max-width: 980px; font-size: clamp(34px, 3.9vw, 56px); line-heig
 .player-grid:is([data-density='9'], [data-density='10'], [data-density='11'], [data-density='12']) .player-heading { gap: 6px; }
 .player-grid:is([data-density='11'], [data-density='12']) .rank { font-size: 18px; }
 .player-card.pinned { background: color-mix(in srgb, var(--acid) 16%, var(--paper)); box-shadow: inset 0 5px 0 var(--acid); }
+.player-card.related-anchor { background: color-mix(in srgb, var(--acid) 22%, var(--paper)); box-shadow: inset 0 5px 0 var(--acid); }
 .player-heading { display: flex; justify-content: space-between; align-items: flex-start; }
 .player-details { min-width: 0; }
 .player-meta { min-height: 28px; margin: 0 0 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font: 700 9px/1 monospace; letter-spacing: .13em; color: var(--muted); }
@@ -175,6 +184,6 @@ footer a { color: inherit; }
 .guide-grid strong { font: 700 10px/1 monospace; letter-spacing: .12em; }
 .guide-grid p { margin: 8px 0 0; font-size: 13px; line-height: 1.4; color: var(--muted); }
 .modal-done { margin-top: 24px; border: 0; background: var(--ink); color: var(--paper); padding: 12px 16px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
-@media (max-width: 900px) { .hero { grid-template-columns: 1fr; } .hero-copy { max-width: 600px; } .control-deck { grid-template-columns: 1fr 1fr auto; } .results-count { display: none; } .filter-toggle { border-right: 0; } .filter-panel { grid-template-columns: 1fr 1fr; } .player-grid { grid-template-columns: repeat(2, 1fr) !important; } .player-card:nth-child(2n) { border-right: 0; } }
+@media (max-width: 900px) { .hero { grid-template-columns: 1fr; } .hero-copy { max-width: 600px; } .control-deck { grid-template-columns: 1fr 1fr auto; } .results-count { display: none; } .filter-toggle { border-right: 0; } .filter-panel { grid-template-columns: 1fr 1fr; } .player-grid { grid-template-columns: repeat(2, 1fr) !important; } .player-grid[data-related='true'] .player-card:first-child { grid-column-start: auto; } .player-card:nth-child(2n) { border-right: 0; } }
 @media (max-width: 620px) { .topbar { grid-template-columns: 1fr auto; padding: 0 18px; } .season-label { display: none; } .hero { padding: 28px 18px 26px; } h1 { font-size: 38px; } .control-deck { margin: 0 18px; grid-template-columns: 1fr; } .control-group { border-right: 0; border-bottom: 1px solid var(--ink); overflow-x: auto; } .filter-toggle { min-height: 48px; border-bottom: 1px solid var(--ink); } .filter-panel { margin-inline: 18px; grid-template-columns: 1fr; } .compare-bar { margin-inline: 18px; grid-template-columns: 1fr auto; } .compare-names { grid-column: 1 / -1; grid-row: 2; } .results-head { margin: 30px 18px 13px; align-items: flex-start; flex-direction: column; } .results-tools { width: 100%; justify-content: space-between; flex-wrap: wrap; } .player-grid { grid-template-columns: 1fr !important; } .player-card, .player-card:nth-child(2n) { border-right: 0; padding-inline: 22px; } .stack { min-height: 400px; } footer { padding-inline: 18px; flex-direction: column; } .guide-grid { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

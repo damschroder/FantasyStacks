@@ -215,6 +215,7 @@ function PlayerStack({
   profile,
   rank,
   pinned,
+  relatedAnchor,
   volumeMode,
   geometryMode,
   onTogglePin,
@@ -222,6 +223,7 @@ function PlayerStack({
   profile: Profile;
   rank: number;
   pinned: boolean;
+  relatedAnchor?: boolean;
   volumeMode: VolumeMode;
   geometryMode: GeometryMode;
   onTogglePin: () => void;
@@ -282,7 +284,7 @@ function PlayerStack({
   const logo = TEAM_LOGOS[profile.team];
   const initials = profile.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('');
   return (
-    <article className={`player-card${pinned ? ' pinned' : ''}`} style={{ '--accent': color } as React.CSSProperties}>
+    <article className={`player-card${pinned ? ' pinned' : ''}${relatedAnchor ? ' related-anchor' : ''}`} style={{ '--accent': color } as React.CSSProperties}>
       <div className="player-heading">
         <div className="player-details">
           <p className="player-meta">
@@ -376,6 +378,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [playerSearch, setPlayerSearch] = useState('');
+  const [relatedSearch, setRelatedSearch] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
 
   useEffect(() => {
@@ -398,16 +401,69 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
     },
     [dataset, windowKey, position, team, minGames, minTargets, minEcr, maxEcr, rankedEcrCeiling, ecrUnrankedSentinel, volumeMode, scoringMode, sortKey, sortDirection],
   );
-  const profiles = useMemo(() => {
-    const query = playerSearch.trim().toLocaleLowerCase();
-    return query ? rankedProfiles.filter((profile) => profile.name.toLocaleLowerCase().includes(query)) : rankedProfiles;
-  }, [rankedProfiles, playerSearch]);
-  const comparisonProfiles = useMemo(
-    () => profiles.filter((profile) => pinned.includes(profile.playerId)),
-    [profiles, pinned],
+  const priorSeasonProfiles = useMemo(
+    () => aggregateProfiles(dataset, 'lastYear', 'ALL', 'ALL', 1, 0, 1, rankedEcrCeiling, true, 'total', scoringMode, 'ppr'),
+    [dataset, rankedEcrCeiling, scoringMode],
   );
-  const displayProfiles = compareMode ? comparisonProfiles : profiles;
-  const visibleProfiles = compareMode ? displayProfiles : displayProfiles.slice(0, shown);
+  const priorSeasonPoints = useMemo(
+    () => new Map(priorSeasonProfiles.map((profile) => [profile.playerId, profile.fantasyPoints])),
+    [priorSeasonProfiles],
+  );
+  const normalizedSearch = playerSearch.trim().toLocaleLowerCase();
+  const matchingProfiles = useMemo(
+    () => normalizedSearch ? rankedProfiles.filter((profile) => profile.name.toLocaleLowerCase().includes(normalizedSearch)) : rankedProfiles,
+    [rankedProfiles, normalizedSearch],
+  );
+  const anchorProfile = useMemo(() => {
+    if (!normalizedSearch) return null;
+    return rankedProfiles.find((profile) => profile.name.toLocaleLowerCase() === normalizedSearch)
+      ?? matchingProfiles[0]
+      ?? null;
+  }, [rankedProfiles, matchingProfiles, normalizedSearch]);
+  const relatedResult = useMemo(() => {
+    if (!anchorProfile) return { profiles: [] as Profile[], betterCount: 0, worseCount: 0 };
+    const anchorPriorPoints = priorSeasonPoints.get(anchorProfile.playerId) ?? 0;
+    const qualityDirection = (candidate: Profile) => {
+      if (anchorProfile.ecr !== null) {
+        if (candidate.ecr === null) return 1;
+        if (candidate.ecr !== anchorProfile.ecr) return candidate.ecr < anchorProfile.ecr ? -1 : 1;
+      } else if (candidate.ecr !== null) {
+        return -1;
+      }
+      const candidatePriorPoints = priorSeasonPoints.get(candidate.playerId) ?? 0;
+      if (candidatePriorPoints !== anchorPriorPoints) return candidatePriorPoints > anchorPriorPoints ? -1 : 1;
+      return candidate.fantasyPoints > anchorProfile.fantasyPoints ? -1 : 1;
+    };
+    const similarity = (candidate: Profile) => {
+      const candidatePriorPoints = priorSeasonPoints.get(candidate.playerId) ?? 0;
+      const ecrDistance = anchorProfile.ecr !== null && candidate.ecr !== null
+        ? Math.abs(candidate.ecr - anchorProfile.ecr) / 30
+        : anchorProfile.ecr === candidate.ecr ? 0 : 2.5;
+      const pointsScale = Math.max(50, anchorPriorPoints * 0.25);
+      const pointsDistance = Math.abs(candidatePriorPoints - anchorPriorPoints) / pointsScale;
+      const positionPenalty = candidate.position === anchorProfile.position ? 0 : 2.25;
+      const teamBonus = candidate.team === anchorProfile.team ? 0.35 : 0;
+      return Math.max(0, ecrDistance + pointsDistance + positionPenalty - teamBonus);
+    };
+    const qualityOrder = (a: Profile, b: Profile) => {
+      if (a.ecr !== null && b.ecr !== null && a.ecr !== b.ecr) return a.ecr - b.ecr;
+      if (a.ecr !== null) return -1;
+      if (b.ecr !== null) return 1;
+      return (priorSeasonPoints.get(b.playerId) ?? 0) - (priorSeasonPoints.get(a.playerId) ?? 0);
+    };
+    const candidates = rankedProfiles.filter((profile) => profile.playerId !== anchorProfile.playerId);
+    const better = candidates.filter((profile) => qualityDirection(profile) < 0).sort((a, b) => similarity(a) - similarity(b)).slice(0, 3).sort(qualityOrder);
+    const worse = candidates.filter((profile) => qualityDirection(profile) > 0).sort((a, b) => similarity(a) - similarity(b)).slice(0, 3).sort(qualityOrder);
+    return { profiles: [...better, anchorProfile, ...worse], betterCount: better.length, worseCount: worse.length };
+  }, [anchorProfile, priorSeasonPoints, rankedProfiles]);
+  const relatedActive = relatedSearch && Boolean(anchorProfile);
+  const comparisonProfiles = useMemo(
+    () => rankedProfiles.filter((profile) => pinned.includes(profile.playerId)),
+    [rankedProfiles, pinned],
+  );
+  const displayProfiles = compareMode ? comparisonProfiles : relatedActive ? relatedResult.profiles : matchingProfiles;
+  const visibleProfiles = compareMode || relatedActive ? displayProfiles : displayProfiles.slice(0, shown);
+  const displayDensity = relatedActive && !compareMode ? 7 : density;
   const sortGroups = position === 'ALL' ? ALL_SORT_GROUPS : position === 'QB' ? QB_SORT_GROUPS : position === 'FLEX' ? FLEX_SORT_GROUPS : position === 'RB' ? RB_SORT_GROUPS : RECEIVER_SORT_GROUPS;
   const usageOptions = position === 'QB' ? [0, 5, 10, 15, 20, 25, 30, 35, 40, 45] : position === 'ALL' ? [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30] : position === 'RB' || position === 'FLEX' ? [0, 2, 4, 6, 8, 10, 12, 15, 20] : [0, 1, 2, 3, 4, 5, 6];
 
@@ -498,7 +554,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         <button className={`filter-toggle${filtersOpen ? ' active' : ''}`} onClick={() => setFiltersOpen(!filtersOpen)}>
           Filters <span>{filtersOpen ? '−' : '+'}</span>
         </button>
-        <div className="results-count"><strong>{profiles.length}</strong><span>QUALIFIED<br />PLAYERS</span></div>
+        <div className="results-count"><strong>{rankedProfiles.length}</strong><span>QUALIFIED<br />PLAYERS</span></div>
       </section>
 
       {filtersOpen && (
@@ -524,18 +580,30 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       )}
 
       <section className="results-head">
-        <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey](dataset.manifest.season).toUpperCase()}`}</p>
+        <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey](dataset.manifest.season).toUpperCase()}`}</p>
         <div className="results-tools">
-          <label className="player-search-label">
+          <div className="player-search-label">
             <span>PLAYER SEARCH</span>
-            <input
-              type="search"
-              value={playerSearch}
-              placeholder="Search players"
-              aria-label="Search players by name"
-              onChange={(event) => { setPlayerSearch(event.target.value); setShown(density * 3); }}
-            />
-          </label>
+            <div className="player-search-input">
+              <input
+                type="search"
+                value={playerSearch}
+                placeholder="Search players"
+                aria-label="Search players by name"
+                onChange={(event) => { setPlayerSearch(event.target.value); setShown(density * 3); }}
+              />
+              <button
+                type="button"
+                className={relatedSearch ? 'active' : ''}
+                aria-pressed={relatedSearch}
+                disabled={!normalizedSearch}
+                title="Show three stronger and three weaker related players"
+                onClick={() => { setRelatedSearch((current) => !current); setCompareMode(false); }}
+              >
+                Related
+              </button>
+            </div>
+          </div>
           <label className="ecr-label">
             <span>FP ECR RANGE <output>{integer.format(minEcr)}–{maxEcr === ecrUnrankedSentinel ? 'NR' : integer.format(maxEcr)}</output></span>
             <span
@@ -641,15 +709,23 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 
       {displayProfiles.length ? (
         <>
-          <section className="player-grid" data-density={density} data-geometry={geometryMode} data-color={colorMode} style={{ '--density': density } as React.CSSProperties}>
+          {relatedActive && !compareMode && <div className="related-scale" aria-hidden="true"><span>← BETTER</span><strong>SEARCHED PLAYER</strong><span>WORSE →</span></div>}
+          <section
+            className="player-grid"
+            data-density={displayDensity}
+            data-geometry={geometryMode}
+            data-color={colorMode}
+            data-related={relatedActive && !compareMode}
+            style={{ '--density': displayDensity, '--related-start': 4 - relatedResult.betterCount } as React.CSSProperties}
+          >
             {visibleProfiles.map((profile) => (
-              <PlayerStack key={profile.playerId} profile={profile} rank={rankedProfiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} volumeMode={volumeMode} geometryMode={geometryMode} onTogglePin={() => togglePin(profile.playerId)} />
+              <PlayerStack key={profile.playerId} profile={profile} rank={rankedProfiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} relatedAnchor={relatedActive && !compareMode && profile.playerId === anchorProfile?.playerId} volumeMode={volumeMode} geometryMode={geometryMode} onTogglePin={() => togglePin(profile.playerId)} />
             ))}
           </section>
-          {!compareMode && shown < displayProfiles.length && <button className="load-more" onClick={() => setShown((current) => current + density * 3)}>Show 3 more rows <span>↓</span></button>}
+          {!compareMode && !relatedActive && shown < displayProfiles.length && <button className="load-more" onClick={() => setShown((current) => current + density * 3)}>Show 3 more rows <span>↓</span></button>}
         </>
       ) : (
-        <section className="empty-state"><strong>{compareMode ? 'No selected stacks in this view.' : playerSearch.trim() ? 'No matching players.' : 'No qualified players.'}</strong><p>{compareMode ? 'Show all stacks or loosen the filters to restore the comparison.' : playerSearch.trim() ? 'Try another player name or clear the search.' : 'Loosen the minimum games or usage filter to widen the field.'}</p></section>
+        <section className="empty-state"><strong>{compareMode ? 'No selected stacks in this view.' : normalizedSearch ? 'No matching players.' : 'No qualified players.'}</strong><p>{compareMode ? 'Show all stacks or loosen the filters to restore the comparison.' : normalizedSearch ? 'Try another player name or loosen the current filters.' : 'Loosen the minimum games or usage filter to widen the field.'}</p></section>
       )}
 
       <footer>
@@ -673,6 +749,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               <div><strong>FP ECR RANGE</strong><p>Limits the field to the current FantasyPros redraft consensus range. The upper NR endpoint retains players without a current ranking.</p></div>
               <div><strong>NORMALIZE</strong><p>Total compares accumulated volume. Per game normalizes layer values, widths, fantasy points, and volume sorting for every selected time window.</p></div>
               <div><strong>PPR SCORING</strong><p>Full adds 1 point per catch, Half adds 0.5, and Off removes the reception bonus. Fantasy-point width and sorting update immediately.</p></div>
+              <div><strong>RELATED PLAYERS</strong><p>Uses ECR to define better and worse, then favors nearby ECR and prior-season fantasy points, the same position, and the same team. The searched player stays in the center.</p></div>
               <div><strong>LABELS</strong><p>Each layer shows its rank within the relevant team or active player field, the metric name, its raw total, and the exact rate that controls its height.</p></div>
             </div>
             <button className="modal-done" onClick={() => setGuideOpen(false)}>Explore the stacks</button>
