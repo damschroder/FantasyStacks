@@ -5,6 +5,15 @@ import PostHogProvider from './PostHogProvider';
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fantasy-stacks-alpha.jdams.chatgpt.site').replace(/\/$/, '');
 const title = 'Fantasy Football Player Comparison | FantasyStacks';
 const description = 'Compare NFL fantasy football players by opportunity, efficiency, and production. Visualize snaps, targets, touches, yards, touchdowns, and fantasy points.';
+const themeBootstrap = `(() => {
+  try {
+    const saved = localStorage.getItem('fantasy-stacks-theme');
+    const theme = saved === 'light' || saved === 'dark'
+      ? saved
+      : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = theme;
+  } catch {}
+})();`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -95,7 +104,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
       <body>
         <script
           type="application/ld+json"

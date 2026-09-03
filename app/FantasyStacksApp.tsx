@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePostHog } from 'posthog-js/react';
+import { APP_BUILD } from '@/lib/app-config';
 import {
   aggregateProfiles,
   Dataset,
@@ -625,14 +626,28 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem('fantasy-stacks-theme');
-    const nextTheme: ThemeMode = savedTheme === 'dark' || savedTheme === 'light'
-      ? savedTheme
-      : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const appliedTheme = document.documentElement.dataset.theme;
+    const nextTheme: ThemeMode = appliedTheme === 'dark' || appliedTheme === 'light'
+      ? appliedTheme
+      : savedTheme === 'dark' || savedTheme === 'light'
+        ? savedTheme
+        : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     const frame = window.requestAnimationFrame(() => {
       setThemeMode(nextTheme);
       document.documentElement.dataset.theme = nextTheme;
     });
-    return () => window.cancelAnimationFrame(frame);
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+    const followSystemTheme = (event: MediaQueryListEvent) => {
+      if (window.localStorage.getItem('fantasy-stacks-theme')) return;
+      const systemChoice: ThemeMode = event.matches ? 'dark' : 'light';
+      setThemeMode(systemChoice);
+      document.documentElement.dataset.theme = systemChoice;
+    };
+    systemTheme.addEventListener('change', followSystemTheme);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      systemTheme.removeEventListener('change', followSystemTheme);
+    };
   }, []);
 
   const teams = useMemo(() => [...new Set(dataset.playerGames.map((game) => game.team))].sort(), [dataset]);
@@ -996,7 +1011,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       )}
 
       <footer>
-        <span>ALPHA · {dataset.manifest.seasons.join('–')} DATA · {dataset.manifest.provider.name.toUpperCase()}</span>
+        <span>ALPHA · BUILD {APP_BUILD} · {dataset.manifest.seasons.join('–')} DATA · {dataset.manifest.provider.name.toUpperCase()}</span>
         <p>Width = peer-relative volume. Height = transition efficiency. <a href="https://nflverse.nflverse.com/" target="_blank" rel="noreferrer">Data via nflverse ↗</a></p>
       </footer>
 
