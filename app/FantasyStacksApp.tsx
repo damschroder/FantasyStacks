@@ -196,6 +196,7 @@ function PlayerStack({
           const height = layer.rate ? 39 + profile.heights[index] * 0.23 : 46;
           const splitTotal = (layer.split?.primary ?? 0) + (layer.split?.secondary ?? 0);
           const splitPercent = splitTotal > 0 ? ((layer.split?.primary ?? 0) / splitTotal) * 100 : 100;
+          const layerRank = profile.layerRanks[index];
           const tierClass = `tier tier-${reverseIndex}${layer.split ? ' split-tier' : ''}${layer.receivingOnly ? ' receiving-tier' : ''}`;
           return (
             <div className="tier-wrap" key={layer.label}>
@@ -205,7 +206,9 @@ function PlayerStack({
                 title={layer.split?.description ?? `${layer.label}: ${layer.value}`}
                 style={{ width: `${width}%`, height: `${height}px`, '--split': `${splitPercent}%` } as React.CSSProperties}
               >
-                <span>{layer.label}</span><strong>{layer.value}</strong>
+                <span className="tier-rank" aria-label={`Rank ${layerRank.rank} out of ${layerRank.total}`}>{layerRank.rank} / {layerRank.total}</span>
+                <span className="tier-label">{layer.label}</span>
+                <strong>{layer.value}</strong>
               </div>
             </div>
           );
@@ -484,7 +487,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               <div><strong>FP ECR RANGE</strong><p>Limits the field to the current FantasyPros redraft consensus range. The upper NR endpoint retains players without a current ranking.</p></div>
               <div><strong>NORMALIZE</strong><p>Total compares accumulated volume. Per game normalizes layer values, widths, fantasy points, and volume sorting for every selected time window.</p></div>
               <div><strong>PPR SCORING</strong><p>Full adds 1 point per catch, Half adds 0.5, and Off removes the reception bonus. Fantasy-point width and sorting update immediately.</p></div>
-              <div><strong>LABELS</strong><p>The unnormalized truth: raw totals and the exact rate that controls each layer’s height.</p></div>
+              <div><strong>LABELS</strong><p>Each layer shows its rank within the relevant team or active player field, the metric name, its raw total, and the exact rate that controls its height.</p></div>
             </div>
             <button className="modal-done" onClick={() => setGuideOpen(false)}>Explore the stacks</button>
           </section>
