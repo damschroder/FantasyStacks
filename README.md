@@ -2,6 +2,8 @@
 
 FantasyStacks is an experimental fantasy-football visualization for comparing WR, TE, RB, and QB opportunity-to-production profiles.
 
+The site includes canonical and social metadata, a branded favicon and web manifest, crawler directives, a sitemap, and JSON-LD describing the FantasyStacks website and page. The current Sites deployment is private, so indexing begins only if the access policy is later made public.
+
 Receiver stacks have seven layers:
 
 1. Team offensive plays
