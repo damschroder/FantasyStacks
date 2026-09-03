@@ -94,6 +94,7 @@ const percent = (value: number) => `${decimal.format(value * 100)}%`;
 const minimumGamesForWindow = (windowKey: WindowKey) => windowKey === 'thisYear' || windowKey === 'lastYear' ? 6 : windowKey === 'last5' ? 3 : windowKey === 'last3' ? 2 : 1;
 type SortDirection = 'desc' | 'asc';
 type GeometryMode = 'trapezoid' | 'block';
+type ColorMode = 'origional' | 'flow';
 type ThemeMode = 'light' | 'dark';
 
 type StackLayer = {
@@ -102,6 +103,18 @@ type StackLayer = {
   rate?: string;
   receivingOnly?: boolean;
   split?: { primary: number; secondary: number; description: string };
+};
+
+const layerColorClass = (label: string) => {
+  if (label === 'Team plays') return 'flow-team';
+  if (label === 'Snaps') return 'flow-snaps';
+  if (label === 'Targets' || label === 'Touches + targets' || label === 'Passes') return 'flow-usage';
+  if (label === 'Catches' || label === 'Completions') return 'flow-catches';
+  if (label === 'Yards' || label === 'Scrim yards' || label === 'Pass yards') return 'flow-yards';
+  if (label === 'TD' || label === 'Total TD' || label === 'Pass TD') return 'flow-td';
+  if (label === 'Fantasy pts') return 'flow-fantasy';
+  if (label === 'Sacks + INT') return 'flow-negative';
+  return '';
 };
 
 function BrandMark() {
@@ -223,7 +236,7 @@ function PlayerStack({
           const splitTotal = (layer.split?.primary ?? 0) + (layer.split?.secondary ?? 0);
           const splitPercent = splitTotal > 0 ? ((layer.split?.primary ?? 0) / splitTotal) * 100 : 100;
           const layerRank = profile.layerRanks[index];
-          const tierClass = `tier tier-${reverseIndex}${layer.split ? ' split-tier' : ''}${layer.receivingOnly ? ' receiving-tier' : ''}`;
+          const tierClass = `tier tier-${reverseIndex} ${layerColorClass(layer.label)}${layer.split ? ' split-tier' : ''}${layer.receivingOnly ? ' receiving-tier' : ''}`;
           return (
             <div className="tier-wrap" key={layer.label}>
               {layer.rate && <span className="rate-label">{layer.rate}</span>}
@@ -257,6 +270,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const [volumeMode, setVolumeMode] = useState<VolumeMode>('total');
   const [scoringMode, setScoringMode] = useState<ScoringMode>('full');
   const [geometryMode, setGeometryMode] = useState<GeometryMode>('trapezoid');
+  const [colorMode, setColorMode] = useState<ColorMode>('origional');
   const [position, setPosition] = useState<PositionFilter>('RECEIVERS');
   const [team, setTeam] = useState('ALL');
   const [minGames, setMinGames] = useState(6);
@@ -496,6 +510,22 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               ))}
             </div>
           </div>
+          <div className="color-label">
+            <span>COLOR</span>
+            <div className="segmented color-toggle">
+              {(['origional', 'flow'] as const).map((value) => (
+                <button
+                  type="button"
+                  key={value}
+                  className={colorMode === value ? 'active' : ''}
+                  aria-pressed={colorMode === value}
+                  onClick={() => setColorMode(value)}
+                >
+                  {value === 'origional' ? 'Origional' : 'Flow'}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="sort-label"><span>SORT</span>
             <div className="sort-input">
               <select aria-label="Sort metric" value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(density * 3); }}>
@@ -521,7 +551,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 
       {displayProfiles.length ? (
         <>
-          <section className="player-grid" data-density={density} data-geometry={geometryMode} style={{ '--density': density } as React.CSSProperties}>
+          <section className="player-grid" data-density={density} data-geometry={geometryMode} data-color={colorMode} style={{ '--density': density } as React.CSSProperties}>
             {visibleProfiles.map((profile) => (
               <PlayerStack key={profile.playerId} profile={profile} rank={rankedProfiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} volumeMode={volumeMode} geometryMode={geometryMode} onTogglePin={() => togglePin(profile.playerId)} />
             ))}
@@ -545,6 +575,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
             <div className="guide-grid">
               <div><strong>WIDTH</strong><p>How much volume a player produced compared with the currently qualified peer group.</p></div>
               <div><strong>GEOMETRY</strong><p>Trapezoid preserves the original percentile silhouette. Block uses rectangles spanning one-third to full width: Team Plays ranks across all teams, while player layers rank within the active view.</p></div>
+              <div><strong>COLOR</strong><p>Origional preserves team-led color. Flow separates unscored opportunity in three greys from production in amber, orange, and red, with lime reserved for Fantasy Points.</p></div>
               <div><strong>HEIGHT</strong><p>How efficiently one stage converted into the next. Taller layers indicate a stronger rate. Team Plays and Fantasy Points use fixed heights.</p></div>
               <div><strong>BULGES</strong><p>Useful signal, not a flaw. A wide yardage tier above modest catches identifies explosive production.</p></div>
               <div><strong>RB COLOR</strong><p>Team color shows rushing touches and production. The highlight color shows targets and receiving production.</p></div>
