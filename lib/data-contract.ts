@@ -250,6 +250,8 @@ export function aggregateProfiles(
     const player = players.get(game.playerId);
     if (!player) continue;
     const context = teamGames.get(`${game.gameId}:${game.team}`);
+    // Only render complete stacks; an unknown snap count is not a zero.
+    if (game.offensiveSnaps === null || context?.offensivePlays == null) continue;
     const current = accumulators.get(game.playerId) ?? {
       playerId: game.playerId, name: player.name, headshotUrl: player.headshotUrl, position: game.position, team: game.team, ecr: player.ecr,
       games: 0, possessions: 0, teamPlays: 0, snaps: 0,

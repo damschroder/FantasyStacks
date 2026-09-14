@@ -1,5 +1,7 @@
 # FantasyStacks
 
+The current published snapshot includes 2026 regular-season Week 1 (15 games as of September 14) and the 2025 comparison season. Minimum games defaults to one; unranked players are included. Stacks with unknown snaps or team plays are withheld. This is a post-game snapshot, not a live feed. The refresh script currently restricts 2026 to Week 1.
+
 FantasyStacks is an experimental fantasy-football visualization for comparing WR, TE, RB, and QB opportunity-to-production profiles.
 
 The site includes canonical and social metadata, a branded favicon and web manifest, crawler directives, a sitemap, and JSON-LD describing the FantasyStacks website and page. The current Sites deployment is private, so indexing begins only if the access policy is later made public.

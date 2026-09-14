@@ -607,7 +607,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const [colorMode, setColorMode] = useState<ColorMode>('origional');
   const [position, setPosition] = useState<PositionFilter>('RECEIVERS');
   const [team, setTeam] = useState('ALL');
-  const [minGames, setMinGames] = useState(6);
+  const [minGames, setMinGames] = useState(1);
   const [minTargets, setMinTargets] = useState(2);
   const [sortKey, setSortKey] = useState<SortKey>('ppr');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -616,7 +616,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const [compareMode, setCompareMode] = useState(false);
   const [density, setDensity] = useState(8);
   const [minEcr, setMinEcr] = useState(1);
-  const [maxEcr, setMaxEcr] = useState(Math.min(225, rankedEcrCeiling));
+  const [maxEcr, setMaxEcr] = useState(ecrUnrankedSentinel);
   const [shown, setShown] = useState(24);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);

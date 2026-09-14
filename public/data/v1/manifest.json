@@ -1,22 +1,22 @@
 {
   "schemaVersion": "1.4.0",
-  "generatedAt": "2026-09-01T02:03:04.124633Z",
-  "season": 2025,
+  "generatedAt": "2026-09-14T15:29:44.512271Z",
+  "season": 2026,
   "seasons": [
-    2024,
-    2025
+    2025,
+    2026
   ],
   "provider": {
     "name": "nflverse",
     "license": "CC BY 4.0; underlying NFL data remains subject to its owners' terms",
     "sourceUrls": [
       "https://github.com/nflverse/nflverse-data/releases/download/players/players.parquet",
-      "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2024.parquet",
-      "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2024.parquet",
-      "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2024.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2025.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2025.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2025.parquet",
+      "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2026.parquet",
+      "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2026.parquet",
+      "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2026.parquet",
       "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_fpecr_latest.csv",
       "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_playerids.csv"
     ]
@@ -24,18 +24,18 @@
   "files": {
     "players": {
       "path": "/data/v1/players.json",
-      "records": 733,
-      "sha256": "0446d722a66b99bb3fe756bdd0b3f087bcc7b85e9805ef5fac8238af7c470529"
+      "records": 640,
+      "sha256": "380995cfd239553dcf9c7381ae03733dea4691c9a34054a26f6ee3cb7119f0a5"
     },
     "playerGames": {
       "path": "/data/v1/player-games.json",
-      "records": 11411,
-      "sha256": "fb218911347cc23e58d378aa279d5c3d5a9ac764844851540bbbb8682728e581"
+      "records": 6074,
+      "sha256": "e2631d00992ff0228e5d7252fc27795005e4c44b52c2225f1858dc3ca91ae24c"
     },
     "teamGames": {
       "path": "/data/v1/team-games.json",
-      "records": 1088,
-      "sha256": "cbd768f985a45531363bfc80f76742c6c9386df584bead4f2e021e3069c3fef6"
+      "records": 574,
+      "sha256": "3475680e94fb499c34a65f09ca2e60af9276e07df2dcbeb443049cc5927152c2"
     }
   },
   "definitions": {

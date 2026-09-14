@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT / "data" / "raw"
 OUT_DIR = ROOT / "public" / "data" / "v1"
 SCHEMA_DIR = ROOT / "schema"
-SEASONS = [2024, 2025]
+SEASONS = [2025, 2026]
 SEASON = max(SEASONS)
 SCHEMA_VERSION = "1.4.0"
 
@@ -110,11 +110,14 @@ def main() -> None:
 
     stats = stats[
         (stats["season"].isin(SEASONS))
+        & ((stats["season"] != 2026) | (stats["week"] == 1))
         & (stats["season_type"] == "REG")
         & (stats["position"].isin(["WR", "TE", "RB", "QB"]))
     ].copy()
     snaps = snaps[(snaps["season"].isin(SEASONS)) & (snaps["game_type"] == "REG")].copy()
     pbp = pbp[(pbp["season"].isin(SEASONS)) & (pbp["season_type"] == "REG")].copy()
+    snaps = snaps[(snaps["season"] != 2026) | (snaps["week"] == 1)].copy()
+    pbp = pbp[(pbp["season"] != 2026) | (pbp["week"] == 1)].copy()
 
     rankings = rankings[
         (rankings["page_type"] == "redraft-overall")
