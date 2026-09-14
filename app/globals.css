@@ -191,6 +191,25 @@ h1 { margin: 0; max-width: 980px; font-size: clamp(34px, 3.9vw, 56px); line-heig
 .tier-label { justify-self: center; letter-spacing: .09em; text-transform: uppercase; }
 .team-plays-label { max-width: 34px; white-space: normal !important; text-align: center; line-height: 1.05 !important; }
 .tier strong { min-width: 0; justify-self: end; font-size: clamp(15px, 1.4vw, 21px); letter-spacing: -.04em; }
+.tier { grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 4px; padding-inline: max(8%, 3px); }
+.tier .tier-label, .tier .tier-rank, .tier strong { width: max-content; }
+.tier[data-fit='compact'] { grid-template-columns: minmax(0, 1fr) max-content; }
+.tier[data-fit='compact'] .tier-label,
+.tier[data-fit='value'] .tier-label,
+.tier[data-fit='value'] .tier-rank { position: absolute; visibility: hidden; }
+.tier[data-fit='value'] { grid-template-columns: minmax(0, 1fr); }
+.tier[data-fit='value'] strong { justify-self: center; font-size: var(--fitted-value-size, clamp(15px, 1.4vw, 21px)); }
+.player-heading h2 { overflow-wrap: anywhere; }
+.player-card { container-type: inline-size; }
+.rate-label[data-compact='true'] .rate-description { display: none; }
+@container (max-width: 180px) {
+  .player-name-row { display: block; }
+  .player-headshot { display: block; width: 32px; height: 32px; margin-bottom: 7px; }
+  .player-heading h2 { font-size: 14px; line-height: 1.15; }
+  .player-details { width: 100%; }
+  .player-meta { padding-right: 20px; }
+  .player-heading > .rank { position: absolute; right: 7px; top: 18px; }
+}
 .rate-label { position: absolute; z-index: 2; bottom: -10px; left: 50%; transform: translateX(-50%); background: var(--paper); border: 1px solid var(--ink); border-radius: 999px; padding: 3px 7px; font: 700 9px/1 monospace; white-space: nowrap; }
 .pinned .rate-label { background: var(--pinned-label); }
 .card-footer { min-height: 36px; display: flex; align-items: end; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }

@@ -469,6 +469,42 @@ function PlayerStack({
   onTogglePin: () => void;
 }) {
   const perGame = volumeMode === 'perGame';
+  const stackRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const stack = stackRef.current;
+    if (!stack) return;
+    let active = true;
+    const fit = () => {
+      if (!active) return;
+      for (const rate of stack.querySelectorAll<HTMLElement>('.rate-label')) {
+        rate.dataset.compact = 'false';
+        rate.dataset.compact = String(rate.getBoundingClientRect().width > stack.clientWidth - 4);
+      }
+      for (const tier of stack.querySelectorAll<HTMLElement>('.tier')) {
+        const label = tier.querySelector<HTMLElement>('.tier-label')!;
+        const rank = tier.querySelector<HTMLElement>('.tier-rank')!;
+        const value = tier.querySelector<HTMLElement>('strong')!;
+        tier.dataset.fit = 'full';
+        tier.style.removeProperty('--fitted-value-size');
+        const style = getComputedStyle(tier);
+        const room = tier.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+        const gap = parseFloat(style.columnGap) || 0;
+        const valueWidth = value.getBoundingClientRect().width;
+        if (rank.scrollWidth + label.scrollWidth + valueWidth + gap * 2 + 4 > room) {
+          tier.dataset.fit = rank.scrollWidth + valueWidth + gap + 4 <= room ? 'compact' : 'value';
+        }
+        if (tier.dataset.fit === 'value' && valueWidth > room) {
+          tier.style.setProperty('--fitted-value-size', `${Math.max(1, parseFloat(getComputedStyle(value).fontSize) * Math.max(1, room) / valueWidth)}px`);
+        }
+      }
+    };
+    const observer = new ResizeObserver(fit);
+    observer.observe(stack);
+    stack.querySelectorAll('.tier').forEach((tier) => observer.observe(tier));
+    fit();
+    void document.fonts.ready.then(fit);
+    return () => { active = false; observer.disconnect(); };
+  }, [profile, volumeMode, geometryMode]);
   const volume = (value: number) => perGame ? decimal.format(value / profile.games) : integer.format(value);
   const splitValue = (value: number, label: string) => `${volume(value)} ${label}${perGame ? ' / game' : ''}`;
   const receiverLayers: StackLayer[] = [
@@ -553,14 +589,14 @@ function PlayerStack({
                 />
               )}
             </span>
-            <h2>{profile.name}</h2>
+            <h2 title={profile.name}>{profile.name}</h2>
           </div>
           {profile.position === 'RB' && <p className="role-legend"><span className="rush-key">RUSH / TOUCH</span><span className="receive-key">TARGET / RECEIVE</span></p>}
           {profile.position === 'QB' && <p className="role-legend"><span className="sack-key">SACKS</span><span className="interception-key">INTERCEPTIONS</span></p>}
         </div>
         <span className="rank">{String(rank).padStart(2, '0')}</span>
       </div>
-      <div className="stack">
+      <div className="stack" ref={stackRef}>
         {[...layers].reverse().map((layer, reverseIndex) => {
           const index = layers.length - 1 - reverseIndex;
           const width = geometryMode === 'block' ? profile.blockWidths[index] : 17 + profile.widths[index] * 0.83;
@@ -571,11 +607,12 @@ function PlayerStack({
           const tierClass = `tier tier-${reverseIndex} ${layerColorClass(layer.label)}${layer.split ? ' split-tier' : ''}${layer.receivingOnly ? ' receiving-tier' : ''}`;
           return (
             <div className="tier-wrap" key={layer.label}>
-              {layer.rate && <span className="rate-label">{layer.rate}</span>}
+              {layer.rate && <span className="rate-label" title={layer.rate} aria-label={layer.rate}><span>{layer.rate.split(' ')[0]}</span><span className="rate-description"> {layer.rate.split(' ').slice(1).join(' ')}</span></span>}
               <div
                 className={tierClass}
-                title={layer.split?.description ?? `${layer.label}: ${layer.value}`}
-                style={{ width: `${width}%`, height: `${height}px`, '--split': `${splitPercent}%` } as React.CSSProperties}
+                title={`${layer.label}: ${layer.value} · Rank ${layerRank.rank}/${layerRank.total}${layer.split ? ` · ${layer.split.description}` : ''}`}
+                aria-label={`${layer.label}: ${layer.value}, rank ${layerRank.rank} out of ${layerRank.total}`}
+                style={{ width: `${width}%`, height: `${height}px`, paddingInline: `max(2px, ${width * 0.06}%)`, '--split': `${splitPercent}%` } as React.CSSProperties}
               >
                 <span className="tier-rank" aria-label={`Rank ${layerRank.rank} out of ${layerRank.total}`}>{layerRank.rank}/{layerRank.total}</span>
                 <span className={`tier-label${layer.label === 'Team plays' ? ' team-plays-label' : ''}`}>{layer.label}</span>
