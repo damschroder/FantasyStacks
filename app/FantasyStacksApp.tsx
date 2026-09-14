@@ -1051,6 +1051,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       )}
 
       <footer>
+        <p className="footer-blurb">Get the fantasy football decision support data that you need without navigating across 20 pages and seven different websites.</p>
         <span>ALPHA · BUILD {APP_BUILD} · {dataset.manifest.seasons.join('–')} DATA · {dataset.manifest.provider.name.toUpperCase()}</span>
         <p>Width = peer-relative volume. Height = transition efficiency. <a href="https://nflverse.nflverse.com/" target="_blank" rel="noreferrer">Data via nflverse ↗</a></p>
       </footer>
