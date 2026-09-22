@@ -21,7 +21,10 @@ SEASONS = [2025, 2026]
 SEASON = max(SEASONS)
 SCHEMA_VERSION = "1.4.0"
 
-URLS = {"players": "https://github.com/nflverse/nflverse-data/releases/download/players/players.parquet"}
+URLS = {
+    "players": "https://github.com/nflverse/nflverse-data/releases/download/players/players.parquet",
+    "schedules": "https://github.com/nflverse/nflverse-data/releases/download/schedules/games.parquet",
+}
 for season in SEASONS:
     URLS.update({
         f"stats_{season}": f"https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{season}.parquet",
@@ -98,6 +101,7 @@ def main() -> None:
     stats = pd.concat([pd.read_parquet(paths[f"stats_{season}"]) for season in SEASONS], ignore_index=True)
     snaps = pd.concat([pd.read_parquet(paths[f"snaps_{season}"]) for season in SEASONS], ignore_index=True)
     people = pd.read_parquet(paths["players"])
+    schedules = pd.read_parquet(paths["schedules"])
     rankings = pd.read_csv(csv_paths["ecr"])
     fantasy_ids = pd.read_csv(csv_paths["playerids"], low_memory=False)
     pbp = pd.concat([
@@ -108,16 +112,31 @@ def main() -> None:
         for season in SEASONS
     ], ignore_index=True)
 
+    current_schedule = schedules[
+        (schedules["season"] == SEASON)
+        & (schedules["game_type"] == "REG")
+    ].copy()
+    current_schedule["complete"] = current_schedule[["away_score", "home_score"]].notna().all(axis=1)
+    week_completion = current_schedule.groupby("week")["complete"].all().sort_index()
+    completed_weeks = []
+    for week, complete in week_completion.items():
+        if not complete:
+            break
+        completed_weeks.append(int(week))
+    if not completed_weeks:
+        raise ValueError(f"No completed {SEASON} regular-season week is available")
+    current_season_through_week = max(completed_weeks)
+
     stats = stats[
         (stats["season"].isin(SEASONS))
-        & ((stats["season"] != 2026) | (stats["week"] == 1))
+        & ((stats["season"] != SEASON) | (stats["week"] <= current_season_through_week))
         & (stats["season_type"] == "REG")
         & (stats["position"].isin(["WR", "TE", "RB", "QB"]))
     ].copy()
     snaps = snaps[(snaps["season"].isin(SEASONS)) & (snaps["game_type"] == "REG")].copy()
     pbp = pbp[(pbp["season"].isin(SEASONS)) & (pbp["season_type"] == "REG")].copy()
-    snaps = snaps[(snaps["season"] != 2026) | (snaps["week"] == 1)].copy()
-    pbp = pbp[(pbp["season"] != 2026) | (pbp["week"] == 1)].copy()
+    snaps = snaps[(snaps["season"] != SEASON) | (snaps["week"] <= current_season_through_week)].copy()
+    pbp = pbp[(pbp["season"] != SEASON) | (pbp["week"] <= current_season_through_week)].copy()
 
     rankings = rankings[
         (rankings["page_type"] == "redraft-overall")
@@ -172,6 +191,26 @@ def main() -> None:
     )
     team_games = game_context.merge(possessions, on=["game_id", "team"], how="left")
     team_games = team_games.merge(team_plays, on=["game_id", "team"], how="left")
+
+    expected_schedule = current_schedule[current_schedule["week"] <= current_season_through_week]
+    expected_team_games = {
+        (str(row.game_id), str(team))
+        for row in expected_schedule.itertuples(index=False)
+        for team in (row.away_team, row.home_team)
+    }
+    actual_team_games = {
+        (str(row.game_id), str(row.team))
+        for row in team_games[team_games["season"] == SEASON].itertuples(index=False)
+    }
+    if actual_team_games != expected_team_games:
+        missing = sorted(expected_team_games - actual_team_games)[:10]
+        extra = sorted(actual_team_games - expected_team_games)[:10]
+        raise ValueError(f"Current team-game feeds do not match the completed schedule; missing={missing}, extra={extra}")
+    expected_game_ids = {game_id for game_id, _ in expected_team_games}
+    player_stat_game_ids = set(stats.loc[stats["season"] == SEASON, "game_id"].astype(str))
+    if not expected_game_ids.issubset(player_stat_game_ids):
+        missing = sorted(expected_game_ids - player_stat_game_ids)
+        raise ValueError(f"Current player-stat feed is missing completed games: {missing}")
 
     def opponent_for(game_id: str, team: str) -> str:
         parts = game_id.split("_")
@@ -268,6 +307,7 @@ def main() -> None:
         "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "season": SEASON,
         "seasons": SEASONS,
+        "currentSeasonThroughWeek": current_season_through_week,
         "provider": {
             "name": "nflverse",
             "license": "CC BY 4.0; underlying NFL data remains subject to its owners' terms",
@@ -285,7 +325,8 @@ def main() -> None:
     write_json("manifest.json", manifest, pretty=True)
     print(
         f"Generated {len(player_records)} players, {len(player_game_records)} player-games, "
-        f"and {len(team_game_records)} team-games for {SEASONS}."
+        f"and {len(team_game_records)} team-games for {SEASONS}; "
+        f"{SEASON} is complete through Week {current_season_through_week}."
     )
 
 

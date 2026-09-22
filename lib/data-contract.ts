@@ -1,5 +1,5 @@
 export type Position = 'WR' | 'TE' | 'RB' | 'QB';
-export type PositionFilter = 'ALL' | 'FLEX' | 'RECEIVERS' | Position;
+export type PositionFilter = 'ALL' | 'FLEX' | 'RECEIVERS' | 'DEF' | Position;
 
 export interface Player {
   playerId: string;
@@ -49,6 +49,23 @@ export interface TeamGame {
   offensivePlays: number | null;
 }
 
+export interface DefenseGame {
+  gameId: string;
+  team: string;
+  opponent: string;
+  season: number;
+  week: number;
+  opponentPlays: number;
+  opponentYards: number;
+  opponentPoints: number;
+  sacks: number;
+  interceptions: number;
+  fumbleRecoveries: number;
+  defensiveTouchdowns: number;
+  specialTeamsTouchdowns: number;
+  safeties: number;
+}
+
 export interface Envelope<T> { schemaVersion: '1.4.0'; data: T[] }
 
 export interface Manifest {
@@ -56,9 +73,10 @@ export interface Manifest {
   generatedAt: string;
   season: number;
   seasons: number[];
+  currentSeasonThroughWeek: number;
   provider: { name: 'nflverse'; license: string; sourceUrls: string[] };
-  files: Record<'players' | 'playerGames' | 'teamGames', { path: string; records: number; sha256: string }>;
-  definitions: { offensivePossessions: string; offensivePlays: string; ecr: string; nullSemantics: string };
+  files: Record<'players' | 'playerGames' | 'teamGames' | 'defenseGames', { path: string; records: number; sha256: string }>;
+  definitions: { offensivePossessions: string; offensivePlays: string; ecr: string; opponentPoints: string; opponentYards: string; nullSemantics: string };
 }
 
 export interface Dataset {
@@ -66,6 +84,7 @@ export interface Dataset {
   players: Player[];
   playerGames: PlayerGame[];
   teamGames: TeamGame[];
+  defenseGames: DefenseGame[];
 }
 
 export function parseDataset(
@@ -73,8 +92,9 @@ export function parseDataset(
   players: unknown,
   playerGames: unknown,
   teamGames: unknown,
+  defenseGames: unknown,
 ): Dataset {
-  const envelopes = [players, playerGames, teamGames] as Array<{ schemaVersion?: unknown; data?: unknown }>;
+  const envelopes = [players, playerGames, teamGames, defenseGames] as Array<{ schemaVersion?: unknown; data?: unknown }>;
   if (!manifest || typeof manifest !== 'object' || (manifest as { schemaVersion?: unknown }).schemaVersion !== '1.4.0') {
     throw new Error('Unsupported FantasyStacks manifest');
   }
@@ -86,6 +106,7 @@ export function parseDataset(
     players: (players as Envelope<Player>).data,
     playerGames: (playerGames as Envelope<PlayerGame>).data,
     teamGames: (teamGames as Envelope<TeamGame>).data,
+    defenseGames: (defenseGames as Envelope<DefenseGame>).data,
   };
 }
 

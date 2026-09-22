@@ -4,12 +4,13 @@
   "title": "FantasyStacks manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "generatedAt", "season", "seasons", "provider", "files", "definitions"],
+  "required": ["schemaVersion", "generatedAt", "season", "seasons", "currentSeasonThroughWeek", "provider", "files", "definitions"],
   "properties": {
     "schemaVersion": { "const": "1.4.0" },
     "generatedAt": { "type": "string", "format": "date-time" },
     "season": { "type": "integer", "minimum": 1999 },
     "seasons": { "type": "array", "items": { "type": "integer", "minimum": 1999 }, "minItems": 2, "uniqueItems": true },
+    "currentSeasonThroughWeek": { "type": "integer", "minimum": 1, "maximum": 22 },
     "provider": {
       "type": "object",
       "additionalProperties": false,
@@ -27,7 +28,8 @@
       "properties": {
         "players": { "$ref": "#/$defs/file" },
         "playerGames": { "$ref": "#/$defs/file" },
-        "teamGames": { "$ref": "#/$defs/file" }
+        "teamGames": { "$ref": "#/$defs/file" },
+        "defenseGames": { "$ref": "#/$defs/file" }
       }
     },
     "definitions": {
@@ -38,6 +40,8 @@
         "offensivePossessions": { "type": "string" },
         "offensivePlays": { "type": "string" },
         "ecr": { "type": "string" },
+        "opponentPoints": { "type": "string" },
+        "opponentYards": { "type": "string" },
         "nullSemantics": { "const": "null means unknown or unavailable; 0 means a verified zero" }
       }
     }

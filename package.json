@@ -12,7 +12,8 @@
     "build:pages": "node scripts/validate-contract.mjs && next build",
     "start": "vinext start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "data:refresh": "python scripts/refresh_data.py",
+    "typecheck": "tsc --project tsconfig.defense-check.json --noEmit",
+    "data:refresh": "python scripts/refresh_data.py && python scripts/refresh_defense_data.py",
     "test:data": "python scripts/check_data.py"
   },
   "dependencies": {

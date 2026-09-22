@@ -17,14 +17,18 @@ manifest = load("manifest.json")
 players = load("players.json")["data"]
 player_games = load("player-games.json")["data"]
 team_games = load("team-games.json")["data"]
+defense_games = load("defense-games.json")["data"]
 
 player_ids = {player["playerId"] for player in players}
 team_context = {(game["gameId"], game["team"]): game for game in team_games}
 
 assert player_games, "player-game dataset is empty"
 assert team_games, "team-game dataset is empty"
+assert defense_games, "defense-game dataset is empty"
 assert manifest["seasons"] == [2025, 2026]
-assert {game["week"] for game in player_games if game["season"] == 2026} == {1}
+current_weeks = set(range(1, manifest["currentSeasonThroughWeek"] + 1))
+assert {game["week"] for game in player_games if game["season"] == manifest["season"]} == current_weeks
+assert {game["week"] for game in team_games if game["season"] == manifest["season"]} == current_weeks
 assert {game["season"] for game in player_games} == set(manifest["seasons"])
 assert all(game["playerId"] in player_ids for game in player_games)
 assert all((game["gameId"], game["team"]) in team_context for game in player_games)
@@ -42,6 +46,20 @@ assert any(game["position"] == "RB" and game["carries"] > 0 for game in player_g
 assert any(game["position"] == "QB" and game["passingAttempts"] > 0 for game in player_games)
 assert all(player["ecr"] is None or player["ecr"] > 0 for player in players)
 assert sum(player["ecr"] is not None for player in players) >= 300
+
+defense_context = {(game["gameId"], game["team"]): game for game in defense_games}
+assert len(defense_context) == len(defense_games), "duplicate defense-game keys"
+assert defense_context.keys() == team_context.keys(), "defense games do not match team games"
+assert {game["week"] for game in defense_games if game["season"] == manifest["season"]} == current_weeks
+for game in defense_games:
+    opponent = team_context[(game["gameId"], game["opponent"])]
+    assert game["opponentPlays"] == opponent["offensivePlays"]
+    assert game["season"] == opponent["season"] and game["week"] == opponent["week"]
+    assert all(game[field] >= 0 for field in (
+        "opponentPlays", "opponentYards", "opponentPoints", "sacks",
+        "interceptions", "fumbleRecoveries", "defensiveTouchdowns",
+        "specialTeamsTouchdowns", "safeties",
+    ))
 
 for key, descriptor in manifest["files"].items():
     path = DATA / Path(descriptor["path"]).name
@@ -61,4 +79,4 @@ for game in player_games:
 qualified_count = sum(1 for value in qualified_season.values() if value["games"] >= 1 and value["usage"] / value["games"] >= 2)
 assert qualified_count >= 50, f"unexpectedly small qualified cohort: {qualified_count}"
 
-print(f"Integrity checks passed for {len(players)} players and {len(player_games)} player-games; {qualified_count} qualify by default.")
+print(f"Integrity checks passed for {len(players)} players, {len(player_games)} player-games, and {len(defense_games)} defense-games; {qualified_count} players qualify by default.")

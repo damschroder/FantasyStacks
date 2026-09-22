@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import PostHogProvider from './PostHogProvider';
+import PwaRegistration from './PwaRegistration';
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fantasy-stacks-alpha.jdams.chatgpt.site').replace(/\/$/, '');
+const basePath = process.env.GITHUB_PAGES === 'true' ? '/FantasyStacks' : '';
 const title = 'Fantasy Football Player Comparison | FantasyStacks';
 const description = 'Compare NFL fantasy football players by opportunity, efficiency, and production. Visualize snaps, targets, touches, yards, touchdowns, and fantasy points.';
 const themeBootstrap = `(() => {
@@ -34,8 +36,20 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: '/' },
   category: 'sports',
-  icons: { icon: '/favicon.svg' },
-  manifest: '/site.webmanifest',
+  icons: {
+    icon: [
+      { url: `${basePath}/favicon.svg`, type: 'image/svg+xml' },
+      { url: `${basePath}/icons/icon-192.png`, sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [{ url: `${basePath}/icons/apple-touch-icon.png`, sizes: '180x180', type: 'image/png' }],
+  },
+  manifest: `${basePath}/site.webmanifest`,
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'FantasyStacks',
+  },
+  formatDetection: { telephone: false },
   robots: {
     index: true,
     follow: true,
@@ -113,6 +127,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }}
         />
+        <PwaRegistration />
         <PostHogProvider>{children}</PostHogProvider>
       </body>
     </html>

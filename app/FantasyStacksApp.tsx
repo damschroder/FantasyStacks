@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePostHog } from 'posthog-js/react';
 import { APP_BUILD } from '@/lib/app-config';
+import DefenseView from './DefenseView';
 import {
   aggregateProfiles,
   Dataset,
@@ -18,10 +19,16 @@ import {
   WindowKey,
 } from '@/lib/data-contract';
 
-const windowLabel = (windowKey: WindowKey, season: number) => {
-  if (windowKey === 'thisYear') return `${season} season`;
-  if (windowKey === 'lastYear') return `${season - 1} season`;
+const windowLabel = (windowKey: WindowKey, season: number, throughWeek: number) => {
+  if (windowKey === 'thisYear') return `${season} through W${throughWeek}`;
+  if (windowKey === 'lastYear') return `${season - 1} full season`;
   return `Week ${windowKey.slice('week:'.length)}`;
+};
+
+const periodLabel = (windowKey: WindowKey, season: number, throughWeek: number) => {
+  if (windowKey === 'thisYear') return `${season} REGULAR SEASON · THROUGH WEEK ${throughWeek}`;
+  if (windowKey === 'lastYear') return `${season - 1} REGULAR SEASON · FULL`;
+  return `${season} REGULAR SEASON · WEEK ${windowKey.slice('week:'.length)}`;
 };
 const SORT_LABELS: Record<SortKey, string> = {
   ppr: 'Fantasy points',
@@ -812,11 +819,15 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
     window.localStorage.setItem('fantasy-stacks-theme', nextTheme);
   };
 
+  if (position === 'DEF') {
+    return <DefenseView dataset={dataset} onExit={() => changePosition('RECEIVERS')} />;
+  }
+
   return (
     <main>
       <nav className="topbar">
         <a className="brand" href="#top" aria-label="FantasyStacks home"><BrandMark /><span>FANTASY<span>STACKS</span></span></a>
-        <div className="season-label">{windowKey === 'lastYear' ? dataset.manifest.season - 1 : dataset.manifest.season} REGULAR SEASON</div>
+        <div className="season-label">{periodLabel(windowKey, dataset.manifest.season, dataset.manifest.currentSeasonThroughWeek)}</div>
         <div className="topbar-actions">
           <button className="theme-button" type="button" aria-pressed={themeMode === 'dark'} onClick={toggleTheme}>
             {themeMode === 'dark' ? 'Light mode' : 'Dark mode'}
@@ -835,7 +846,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
           <span className="control-label">WINDOW</span>
           <div className="segmented">
             {windowOptions.map((key) => (
-              <button key={key} className={windowKey === key ? 'active' : ''} onClick={() => changeWindow(key)}>{windowLabel(key, dataset.manifest.season)}</button>
+              <button key={key} className={windowKey === key ? 'active' : ''} onClick={() => changeWindow(key)}>{windowLabel(key, dataset.manifest.season, dataset.manifest.currentSeasonThroughWeek)}</button>
             ))}
           </div>
         </div>
@@ -920,7 +931,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 
       <section className="results-head" aria-label="Player filters and sorting">
         <div className="results-summary">
-          <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${windowLabel(windowKey, dataset.manifest.season).toUpperCase()}`}</p>
+          <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${windowLabel(windowKey, dataset.manifest.season, dataset.manifest.currentSeasonThroughWeek).toUpperCase()}`}</p>
           <div className="results-count"><strong>{availableProfiles.length}</strong><span>VISIBLE<br />PLAYERS</span></div>
         </div>
         <div className="results-tools">
@@ -931,7 +942,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
           <div className="position-label">
             <span>POSITION</span>
             <div className="segmented position-toggle">
-              {(['ALL', 'FLEX', 'RECEIVERS', 'WR', 'TE', 'RB', 'QB'] as const).map((value) => (
+              {(['ALL', 'FLEX', 'RECEIVERS', 'WR', 'TE', 'RB', 'QB', 'DEF'] as const).map((value) => (
                 <button key={value} className={position === value ? 'active' : ''} onClick={() => changePosition(value)} title={value === 'ALL' ? 'Quarterbacks, running backs, wide receivers, and tight ends' : value === 'FLEX' ? 'Running backs, wide receivers, and tight ends' : undefined}>
                   {value === 'RECEIVERS' ? 'WR + TE' : value}
                 </button>
@@ -1116,14 +1127,14 @@ export default function FantasyStacksApp() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const files = ['manifest.json', 'players.json', 'player-games.json', 'team-games.json'];
+    const files = ['manifest.json', 'players.json', 'player-games.json', 'team-games.json', 'defense-games.json'];
     Promise.all(files.map(async (file) => {
       const response = await fetch(`./data/v1/${file}`, { signal: controller.signal });
       if (!response.ok) throw new Error(`Unable to load ${file} (${response.status})`);
       return response.json() as Promise<unknown>;
     }))
-      .then(([manifest, players, playerGames, teamGames]) => {
-        setDataset(parseDataset(manifest, players, playerGames, teamGames));
+      .then(([manifest, players, playerGames, teamGames, defenseGames]) => {
+        setDataset(parseDataset(manifest, players, playerGames, teamGames, defenseGames));
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : 'Unable to load FantasyStacks data');

@@ -1,16 +1,18 @@
 {
   "schemaVersion": "1.4.0",
-  "generatedAt": "2026-09-14T15:29:44.512271Z",
+  "generatedAt": "2026-09-22T19:57:12.970389Z",
   "season": 2026,
   "seasons": [
     2025,
     2026
   ],
+  "currentSeasonThroughWeek": 2,
   "provider": {
     "name": "nflverse",
     "license": "CC BY 4.0; underlying NFL data remains subject to its owners' terms",
     "sourceUrls": [
       "https://github.com/nflverse/nflverse-data/releases/download/players/players.parquet",
+      "https://github.com/nflverse/nflverse-data/releases/download/schedules/games.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2025.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2025.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2025.parquet",
@@ -18,30 +20,39 @@
       "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2026.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2026.parquet",
       "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_fpecr_latest.csv",
-      "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_playerids.csv"
+      "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_playerids.csv",
+      "https://github.com/nflverse/nflverse-data/releases/download/stats_team/stats_team_week_2025.parquet",
+      "https://github.com/nflverse/nflverse-data/releases/download/stats_team/stats_team_week_2026.parquet"
     ]
   },
   "files": {
     "players": {
       "path": "/data/v1/players.json",
-      "records": 640,
-      "sha256": "380995cfd239553dcf9c7381ae03733dea4691c9a34054a26f6ee3cb7119f0a5"
+      "records": 659,
+      "sha256": "8b88fbca263e804e9938e049a8738b90f316f683487ada5ef141355d4fd8a7d8"
     },
     "playerGames": {
       "path": "/data/v1/player-games.json",
-      "records": 6074,
-      "sha256": "e2631d00992ff0228e5d7252fc27795005e4c44b52c2225f1858dc3ca91ae24c"
+      "records": 6440,
+      "sha256": "a8fc7873636acb85481f0d744dba30e9e984d0b62a8d975fd89fe8d0b1ca3285"
     },
     "teamGames": {
       "path": "/data/v1/team-games.json",
-      "records": 574,
-      "sha256": "3475680e94fb499c34a65f09ca2e60af9276e07df2dcbeb443049cc5927152c2"
+      "records": 608,
+      "sha256": "45696a3949a4b8b19e43474b0fd8b6dea492067986136f60d5c17c0df7b13958"
+    },
+    "defenseGames": {
+      "path": "/data/v1/defense-games.json",
+      "records": 608,
+      "sha256": "d28d066cd0f04c88605836071409543bb72bf131b051da928267aa602f42b38e"
     }
   },
   "definitions": {
     "offensivePossessions": "Distinct nflverse play-by-play drive identifiers with a recorded possession team.",
     "offensivePlays": "Median team snap total reconstructed from player offense_snaps / offense_pct, rounded to a whole play.",
     "ecr": "Current FantasyPros redraft-overall expert consensus rank distributed by DynastyProcess through nflverse; null means the player is not currently ranked.",
-    "nullSemantics": "null means unknown or unavailable; 0 means a verified zero"
+    "nullSemantics": "null means unknown or unavailable; 0 means a verified zero",
+    "opponentPoints": "Opponent final scoreboard points; includes any points scored by the opponent's defense or special teams.",
+    "opponentYards": "Opponent net offensive yards: passing plus rushing yards plus signed sack yards lost."
   }
 }

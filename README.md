@@ -1,10 +1,10 @@
 # FantasyStacks
 
-The current published snapshot includes 2026 regular-season Week 1 (15 games as of September 14) and the 2025 comparison season. Minimum games defaults to one; unranked players are included. Stacks with unknown snaps or team plays are withheld. This is a post-game snapshot, not a live feed. The refresh script currently restricts 2026 to Week 1.
+The current published snapshot includes every fully completed 2026 regular-season week available from nflverse and the full 2025 comparison season. Minimum games defaults to one; unranked players are included. Stacks with unknown snaps or team plays are withheld. This is a post-game snapshot, not a live feed. The manifest records the latest completed week, and the app states that cutoff anywhere it presents a season-to-date view.
 
 FantasyStacks is an experimental fantasy-football visualization for comparing WR, TE, RB, and QB opportunity-to-production profiles.
 
-The site includes canonical and social metadata, a branded favicon and web manifest, crawler directives, a sitemap, and JSON-LD describing the FantasyStacks website and page. The current Sites deployment is private, so indexing begins only if the access policy is later made public.
+The site includes canonical and social metadata, a branded favicon and installable PWA manifest, platform icons, offline fallback, crawler directives, a sitemap, and JSON-LD describing the FantasyStacks website and page. The current Sites deployment is private, so indexing begins only if the access policy is later made public.
 
 Receiver stacks have seven layers:
 
@@ -30,7 +30,7 @@ The two-sided FP ECR control filters the cohort by the current FantasyPros redra
 
 Player Search includes a Related mode. It anchors the searched player in the center of a seven-card desktop row, with up to three better-ECR comparisons on the left and three worse-ECR comparisons on the right. Candidate similarity favors nearby ECR and prior-season fantasy points, with stronger weight for the same position and a smaller same-team boost. Current qualification filters define the candidate universe.
 
-Time windows cover the latest week, trailing three and five games, the 2025 season, and the 2024 season. The independent Total / Per game setting controls displayed layer volume, width percentiles, fantasy points, volume sorting, and stack score without changing transition-rate heights.
+Time-window controls name every available current-season week explicitly and add new week buttons automatically as refreshed data arrives. Full current- and prior-season views remain available. The independent Total / Per game setting controls displayed layer volume, width percentiles, fantasy points, volume sorting, and stack score without changing transition-rate heights.
 
 The PPR control switches between Full, Half, and Off. The app retains full-PPR source facts and derives the other modes by applying 0.5 or 0 reception points, so the Fantasy Points layer, sorting, widths, and stack score all update without rewriting the underlying records. Fantasy Points has no transition metric.
 
@@ -55,7 +55,7 @@ Local development remains at `http://localhost:3000`; the `/FantasyStacks` base 
 npm run data:refresh
 ```
 
-The refresh script downloads the 2025 nflverse player-stat, snap-count, play-by-play, and player-identity Parquet feeds. It emits compact canonical JSON under `public/data/v1`.
+The refresh script downloads the 2025 and 2026 nflverse player-stat, snap-count, play-by-play, schedule, and player-identity Parquet feeds. It includes current-season weeks only after every scheduled game in that week has a final score, then emits compact canonical JSON under `public/data/v1`.
 
 ## Data contract
 
