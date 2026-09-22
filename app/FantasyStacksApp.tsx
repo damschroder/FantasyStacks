@@ -18,12 +18,10 @@ import {
   WindowKey,
 } from '@/lib/data-contract';
 
-const WINDOW_LABELS: Record<WindowKey, (season: number) => string> = {
-  lastWeek: () => 'Last week',
-  last3: () => 'Last 3',
-  last5: () => 'Last 5',
-  thisYear: (season) => `${season} season`,
-  lastYear: (season) => `${season - 1} season`,
+const windowLabel = (windowKey: WindowKey, season: number) => {
+  if (windowKey === 'thisYear') return `${season} season`;
+  if (windowKey === 'lastYear') return `${season - 1} season`;
+  return `Week ${windowKey.slice('week:'.length)}`;
 };
 const SORT_LABELS: Record<SortKey, string> = {
   ppr: 'Fantasy points',
@@ -98,7 +96,6 @@ const ALL_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
 const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const percent = (value: number) => `${decimal.format(value * 100)}%`;
-const minimumGamesForWindow = (windowKey: WindowKey) => windowKey === 'thisYear' || windowKey === 'lastYear' ? 6 : windowKey === 'last5' ? 3 : windowKey === 'last3' ? 2 : 1;
 type SortDirection = 'desc' | 'asc';
 type GeometryMode = 'trapezoid' | 'block';
 type ColorMode = 'origional' | 'flow';
@@ -688,6 +685,14 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   }, []);
 
   const teams = useMemo(() => [...new Set(dataset.playerGames.map((game) => game.team))].sort(), [dataset]);
+  const windowOptions = useMemo<WindowKey[]>(() => {
+    const weeks = [...new Set(dataset.playerGames
+      .filter((game) => game.season === dataset.manifest.season && game.played)
+      .map((game) => game.week))]
+      .sort((a, b) => a - b)
+      .map((week): WindowKey => `week:${week}`);
+    return [...weeks, 'thisYear', 'lastYear'];
+  }, [dataset]);
   const rankedProfiles = useMemo(
     () => {
       const ranked = aggregateProfiles(dataset, windowKey, position, team, minGames, minTargets, minEcr, Math.min(maxEcr, rankedEcrCeiling), maxEcr === ecrUnrankedSentinel, volumeMode, scoringMode, sortKey);
@@ -771,7 +776,8 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 
   const changeWindow = (next: WindowKey) => {
     setWindowKey(next);
-    setMinGames(minimumGamesForWindow(next));
+    // Keep early-season windows usable; users can raise the qualification manually.
+    setMinGames(1);
     setShown(density * 3);
   };
   const changePosition = (next: PositionFilter) => {
@@ -825,11 +831,11 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       </section>
 
       <section className="control-deck" aria-label="Stack view controls">
-        <div className="control-group">
+        <div className="control-group window-group">
           <span className="control-label">WINDOW</span>
           <div className="segmented">
-            {(Object.keys(WINDOW_LABELS) as WindowKey[]).map((key) => (
-              <button key={key} className={windowKey === key ? 'active' : ''} onClick={() => changeWindow(key)}>{WINDOW_LABELS[key](dataset.manifest.season)}</button>
+            {windowOptions.map((key) => (
+              <button key={key} className={windowKey === key ? 'active' : ''} onClick={() => changeWindow(key)}>{windowLabel(key, dataset.manifest.season)}</button>
             ))}
           </div>
         </div>
@@ -914,7 +920,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 
       <section className="results-head" aria-label="Player filters and sorting">
         <div className="results-summary">
-          <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey](dataset.manifest.season).toUpperCase()}`}</p>
+          <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${windowLabel(windowKey, dataset.manifest.season).toUpperCase()}`}</p>
           <div className="results-count"><strong>{availableProfiles.length}</strong><span>VISIBLE<br />PLAYERS</span></div>
         </div>
         <div className="results-tools">
@@ -998,7 +1004,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         <section className="filter-panel" aria-label="Minimum qualification filters">
           <label>MIN. GAMES<select value={minGames} onChange={(event) => setMinGames(Number(event.target.value))}>{[1, 2, 3, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <label>MIN. {position === 'ALL' ? 'USAGE' : position === 'QB' ? 'PASSES' : position === 'RB' || position === 'FLEX' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <button onClick={() => { setTeam('ALL'); setMinGames(minimumGamesForWindow(windowKey)); setMinTargets(2); setHidden([]); setPlayerSearch(''); setRelatedSearch(false); }}>Reset filters</button>
+          <button onClick={() => { setTeam('ALL'); setMinGames(1); setMinTargets(2); setHidden([]); setPlayerSearch(''); setRelatedSearch(false); }}>Reset filters</button>
         </section>
       )}
 

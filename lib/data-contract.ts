@@ -89,7 +89,7 @@ export function parseDataset(
   };
 }
 
-export type WindowKey = 'lastWeek' | 'last3' | 'last5' | 'thisYear' | 'lastYear';
+export type WindowKey = 'thisYear' | 'lastYear' | `week:${number}`;
 export type VolumeMode = 'total' | 'perGame';
 export type ScoringMode = 'full' | 'half' | 'off';
 export type SortKey =
@@ -223,15 +223,8 @@ export function aggregateProfiles(
   sortKey: SortKey,
 ): Profile[] {
   const selectedSeason = windowKey === 'lastYear' ? dataset.manifest.season - 1 : dataset.manifest.season;
-  const seasonGames = dataset.playerGames.filter((game) => game.season === selectedSeason);
-  const maximumWeek = Math.max(...seasonGames.map((game) => game.week));
-  const allowedWeeks = windowKey === 'lastWeek'
-    ? new Set([maximumWeek])
-    : windowKey === 'last3'
-      ? new Set([maximumWeek - 2, maximumWeek - 1, maximumWeek])
-      : windowKey === 'last5'
-        ? new Set([maximumWeek - 4, maximumWeek - 3, maximumWeek - 2, maximumWeek - 1, maximumWeek])
-        : null;
+  const selectedWeek = windowKey.startsWith('week:') ? Number(windowKey.slice('week:'.length)) : null;
+  const allowedWeeks = selectedWeek === null ? null : new Set([selectedWeek]);
   const players = new Map(dataset.players.map((player) => [player.playerId, player]));
   const teamGames = new Map(dataset.teamGames.map((game) => [`${game.gameId}:${game.team}`, game]));
   type Accumulator = Pick<Profile,
