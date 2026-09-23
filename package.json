@@ -13,6 +13,7 @@
     "start": "vinext start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "typecheck": "tsc --project tsconfig.defense-check.json --noEmit",
+    "test:volume-mode": "node scripts/check-volume-mode.mjs",
     "data:refresh": "python scripts/refresh_data.py && python scripts/refresh_defense_data.py",
     "test:data": "python scripts/check_data.py"
   },

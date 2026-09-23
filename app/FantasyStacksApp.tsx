@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { usePostHog } from 'posthog-js/react';
 import { APP_BUILD } from '@/lib/app-config';
 import DefenseView from './DefenseView';
+import { BrandMark, periodLabel, PositionToggle, TeamPicker, windowLabel } from './StackChrome';
+import VolumeModeToggle from './VolumeModeToggle';
 import {
   aggregateProfiles,
   Dataset,
@@ -19,17 +21,6 @@ import {
   WindowKey,
 } from '@/lib/data-contract';
 
-const windowLabel = (windowKey: WindowKey, season: number, throughWeek: number) => {
-  if (windowKey === 'thisYear') return `${season} through W${throughWeek}`;
-  if (windowKey === 'lastYear') return `${season - 1} full season`;
-  return `Week ${windowKey.slice('week:'.length)}`;
-};
-
-const periodLabel = (windowKey: WindowKey, season: number, throughWeek: number) => {
-  if (windowKey === 'thisYear') return `${season} REGULAR SEASON · THROUGH WEEK ${throughWeek}`;
-  if (windowKey === 'lastYear') return `${season - 1} REGULAR SEASON · FULL`;
-  return `${season} REGULAR SEASON · WEEK ${windowKey.slice('week:'.length)}`;
-};
 const SORT_LABELS: Record<SortKey, string> = {
   ppr: 'Fantasy points',
   ecr: 'FP ECR',
@@ -128,10 +119,6 @@ const layerColorClass = (label: string) => {
   if (label === 'Sacks + INT') return 'flow-negative';
   return '';
 };
-
-function BrandMark() {
-  return <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>;
-}
 
 function FeedbackWidget({ context }: { context: Record<string, string | number | boolean> }) {
   const posthog = usePostHog();
@@ -232,92 +219,6 @@ function FeedbackWidget({ context }: { context: Record<string, string | number |
         <span aria-hidden="true">●</span> Feedback
       </button>
     </aside>
-  );
-}
-
-function TeamPicker({
-  team,
-  teams,
-  onChange,
-}: {
-  team: string;
-  teams: string[];
-  onChange: (team: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const pickerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const selectedLogo = TEAM_LOGOS[team];
-
-  useEffect(() => {
-    if (!open) return;
-    const closeOnOutsideClick = (event: PointerEvent) => {
-      if (!pickerRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      setOpen(false);
-      triggerRef.current?.focus();
-    };
-    document.addEventListener('pointerdown', closeOnOutsideClick);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [open]);
-
-  const selectTeam = (nextTeam: string) => {
-    onChange(nextTeam);
-    setOpen(false);
-    triggerRef.current?.focus();
-  };
-
-  const teamIcon = (teamCode: string) => {
-    const logo = TEAM_LOGOS[teamCode];
-    return logo
-      ? <Image className="team-picker-logo" src={logo} alt="" width={26} height={26} loading="lazy" unoptimized />
-      : <span className="all-team-icon" aria-hidden="true">32</span>;
-  };
-
-  return (
-    <div className="team-picker" ref={pickerRef}>
-      <button
-        ref={triggerRef}
-        type="button"
-        className="team-picker-trigger"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls="team-filter-menu"
-        onClick={() => setOpen((current) => !current)}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowDown') {
-            event.preventDefault();
-            setOpen(true);
-          }
-        }}
-      >
-        <span className="team-picker-value">
-          {selectedLogo
-            ? <Image className="team-picker-logo" src={selectedLogo} alt="" width={26} height={26} loading="lazy" unoptimized />
-            : <span className="all-team-icon" aria-hidden="true">32</span>}
-          <strong>{team}</strong>
-        </span>
-        <span className="team-picker-caret" aria-hidden="true">{open ? '▲' : '▼'}</span>
-      </button>
-      {open && (
-        <div className="team-picker-menu" id="team-filter-menu" role="menu" aria-label="Select an NFL team">
-          <button type="button" role="menuitemradio" aria-checked={team === 'ALL'} className={team === 'ALL' ? 'selected' : ''} onClick={() => selectTeam('ALL')}>
-            {teamIcon('ALL')}<strong>ALL</strong>
-          </button>
-          {teams.map((teamCode) => (
-            <button type="button" role="menuitemradio" aria-checked={team === teamCode} className={team === teamCode ? 'selected' : ''} key={teamCode} onClick={() => selectTeam(teamCode)}>
-              {teamIcon(teamCode)}<strong>{teamCode}</strong>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -820,7 +721,14 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   };
 
   if (position === 'DEF') {
-    return <DefenseView dataset={dataset} onExit={() => changePosition('RECEIVERS')} />;
+    return (
+      <DefenseView
+        dataset={dataset}
+        themeMode={themeMode}
+        onToggleTheme={toggleTheme}
+        onPositionChange={changePosition}
+      />
+    );
   }
 
   return (
@@ -852,13 +760,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         </div>
         <div className="control-group normalization-group">
           <span className="control-label">NORMALIZE</span>
-          <div className="segmented compact">
-            {(['total', 'perGame'] as const).map((value) => (
-              <button key={value} className={volumeMode === value ? 'active' : ''} onClick={() => { setVolumeMode(value); setShown(density * 3); }}>
-                {value === 'total' ? 'Total' : 'Per game'}
-              </button>
-            ))}
-          </div>
+          <VolumeModeToggle value={volumeMode} onChange={(value) => { setVolumeMode(value); setShown(density * 3); }} />
         </div>
         <div className="control-group scoring-group">
           <span className="control-label">PPR</span>
@@ -941,13 +843,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
           </div>
           <div className="position-label">
             <span>POSITION</span>
-            <div className="segmented position-toggle">
-              {(['ALL', 'FLEX', 'RECEIVERS', 'WR', 'TE', 'RB', 'QB', 'DEF'] as const).map((value) => (
-                <button key={value} className={position === value ? 'active' : ''} onClick={() => changePosition(value)} title={value === 'ALL' ? 'Quarterbacks, running backs, wide receivers, and tight ends' : value === 'FLEX' ? 'Running backs, wide receivers, and tight ends' : undefined}>
-                  {value === 'RECEIVERS' ? 'WR + TE' : value}
-                </button>
-              ))}
-            </div>
+            <PositionToggle position={position} onChange={changePosition} />
           </div>
           <PlayerSearchControl
             value={playerSearch}
@@ -1108,7 +1004,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               <div><strong>RB COLOR</strong><p>Team color shows rushing touches and production. The highlight color shows targets and receiving production.</p></div>
               <div><strong>QB COLOR</strong><p>The split loss layer separates sacks in team color from interceptions in the highlight color. Its height rewards clean dropbacks.</p></div>
               <div><strong>FP ECR RANGE</strong><p>Limits the field to the current FantasyPros redraft consensus range. The upper NR endpoint retains players without a current ranking.</p></div>
-              <div><strong>NORMALIZE</strong><p>Total compares accumulated volume. Per game normalizes layer values, widths, fantasy points, and volume sorting for every selected time window.</p></div>
+              <div><strong>NORMALIZE</strong><p>Total compares accumulated volume. Per game normalizes layer values, widths, fantasy points, and volume sorting using only games the player appeared in; missed games are excluded.</p></div>
               <div><strong>PPR SCORING</strong><p>Full adds 1 point per catch, Half adds 0.5, and Off removes the reception bonus. Fantasy-point width and sorting update immediately.</p></div>
               <div><strong>RELATED PLAYERS</strong><p>Uses ECR to define better and worse, then favors nearby ECR and prior-season fantasy points, the same position, and the same team. The searched player stays in the center.</p></div>
               <div><strong>LABELS</strong><p>Each layer shows its rank within the relevant team or active player field, the metric name, its raw total, and the exact rate that controls its height.</p></div>

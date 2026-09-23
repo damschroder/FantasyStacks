@@ -1,6 +1,6 @@
-# Defense first pass
+# Defense stacks
 
-The DEF tab is a team defense / special-teams comparison, separate from the offensive player stacks. It shows five layers: fantasy points, impact plays, opponent points, opponent net offensive yards, and opponent offensive plays. The 2026 week buttons are discrete named weeks derived from the data snapshot; the current-season button states the latest completed week included, and the prior-season button identifies the full 2025 regular season.
+The DEF position is a team defense / special-teams comparison that uses the same visual grammar and navigation as the offensive player stacks. It shares the header, window and normalization controls, density slider, geometry and color modes, team picker, position menu, sort controls, filter disclosure, responsive grid, stack tiers, and transition bubbles. It shows five layers: fantasy points, impact plays, opponent points, opponent net offensive yards, and opponent offensive plays. The bubbles surface yards per play, points per game, and impact plays per game between the relevant layers. The 2026 week buttons are discrete named weeks derived from the data snapshot; the current-season button states the latest completed week included, and the prior-season button identifies the full 2025 regular season.
 
 ## Data and scoring
 
