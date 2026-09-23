@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePostHog } from 'posthog-js/react';
 import { APP_BUILD } from '@/lib/app-config';
-import DefenseView from './DefenseView';
+import { aggregateDefenses, DefenseSort } from '@/lib/defense-contract';
+import DefenseView, { DEFENSE_SORT_OPTIONS } from './DefenseView';
 import { BrandMark, periodLabel, PositionToggle, TeamPicker, windowLabel } from './StackChrome';
 import VolumeModeToggle from './VolumeModeToggle';
 import {
@@ -552,6 +553,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const [minGames, setMinGames] = useState(1);
   const [minTargets, setMinTargets] = useState(2);
   const [sortKey, setSortKey] = useState<SortKey>('ppr');
+  const [defenseSort, setDefenseSort] = useState<DefenseSort>('fantasyPoints');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [pinned, setPinned] = useState<string[]>([]);
   const [hidden, setHidden] = useState<string[]>([]);
@@ -592,22 +594,36 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
     };
   }, []);
 
-  const teams = useMemo(() => [...new Set(dataset.playerGames.map((game) => game.team))].sort(), [dataset]);
+  const isDefense = position === 'DEF';
+  const teams = useMemo(() => [...new Set([
+    ...dataset.playerGames.map((game) => game.team),
+    ...dataset.defenseGames.map((game) => game.team),
+  ])].sort(), [dataset]);
   const windowOptions = useMemo<WindowKey[]>(() => {
-    const weeks = [...new Set(dataset.playerGames
-      .filter((game) => game.season === dataset.manifest.season && game.played)
-      .map((game) => game.week))]
+    const weeks = [...new Set([
+      ...dataset.playerGames
+        .filter((game) => game.season === dataset.manifest.season && game.played)
+        .map((game) => game.week),
+      ...dataset.defenseGames
+        .filter((game) => game.season === dataset.manifest.season)
+        .map((game) => game.week),
+    ])]
       .sort((a, b) => a - b)
       .map((week): WindowKey => `week:${week}`);
     return [...weeks, 'thisYear', 'lastYear'];
   }, [dataset]);
   const rankedProfiles = useMemo(
     () => {
+      if (isDefense) return [];
       const ranked = aggregateProfiles(dataset, windowKey, position, team, minGames, minTargets, minEcr, Math.min(maxEcr, rankedEcrCeiling), maxEcr === ecrUnrankedSentinel, volumeMode, scoringMode, sortKey);
       return sortDirection === 'desc' ? ranked : [...ranked].reverse();
     },
-    [dataset, windowKey, position, team, minGames, minTargets, minEcr, maxEcr, rankedEcrCeiling, ecrUnrankedSentinel, volumeMode, scoringMode, sortKey, sortDirection],
+    [dataset, windowKey, position, team, minGames, minTargets, minEcr, maxEcr, rankedEcrCeiling, ecrUnrankedSentinel, volumeMode, scoringMode, sortKey, sortDirection, isDefense],
   );
+  const rankedDefenses = useMemo(() => {
+    const ranked = aggregateDefenses(dataset, windowKey, team, minGames, volumeMode, defenseSort);
+    return sortDirection === 'desc' ? ranked : [...ranked].reverse();
+  }, [dataset, windowKey, team, minGames, volumeMode, defenseSort, sortDirection]);
   const availableProfiles = useMemo(
     () => rankedProfiles.filter((profile) => !hidden.includes(profile.playerId)),
     [rankedProfiles, hidden],
@@ -690,8 +706,10 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   };
   const changePosition = (next: PositionFilter) => {
     setPosition(next);
-    setMinTargets(2);
-    setSortKey('ppr');
+    if (next !== 'DEF' && position !== 'DEF') {
+      setMinTargets(2);
+      setSortKey('ppr');
+    }
     setPinned([]);
     setCompareMode(false);
     setShown(density * 3);
@@ -719,17 +737,6 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
     document.documentElement.dataset.theme = nextTheme;
     window.localStorage.setItem('fantasy-stacks-theme', nextTheme);
   };
-
-  if (position === 'DEF') {
-    return (
-      <DefenseView
-        dataset={dataset}
-        themeMode={themeMode}
-        onToggleTheme={toggleTheme}
-        onPositionChange={changePosition}
-      />
-    );
-  }
 
   return (
     <main>
@@ -831,10 +838,10 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         </div>
       </section>
 
-      <section className="results-head" aria-label="Player filters and sorting">
+      <section className="results-head" aria-label="Stack filters and sorting">
         <div className="results-summary">
-          <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${windowLabel(windowKey, dataset.manifest.season, dataset.manifest.currentSeasonThroughWeek).toUpperCase()}`}</p>
-          <div className="results-count"><strong>{availableProfiles.length}</strong><span>VISIBLE<br />PLAYERS</span></div>
+          <p>{isDefense ? `DEFENSIVE PROFILES · ${windowLabel(windowKey, dataset.manifest.season, dataset.manifest.currentSeasonThroughWeek).toUpperCase()}` : compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${windowLabel(windowKey, dataset.manifest.season, dataset.manifest.currentSeasonThroughWeek).toUpperCase()}`}</p>
+          <div className="results-count"><strong>{isDefense ? rankedDefenses.length : availableProfiles.length}</strong><span>VISIBLE<br />{isDefense ? 'DEFENSES' : 'PLAYERS'}</span></div>
         </div>
         <div className="results-tools">
           <div className="team-label">
@@ -883,21 +890,27 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
           </label>
           <div className="sort-label"><span>SORT</span>
             <div className="sort-input">
-              <select aria-label="Sort metric" value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(density * 3); }}>
-                {sortGroups.map((group) => (
-                  <optgroup label={group.label} key={group.label}>
-                    {group.keys.map((key) => <option value={key} key={key}>{SORT_LABELS[key]}</option>)}
-                  </optgroup>
-                ))}
-              </select>
+              {isDefense ? (
+                <select aria-label="Sort metric" value={defenseSort} onChange={(event) => { setDefenseSort(event.target.value as DefenseSort); setShown(density * 3); }}>
+                  {DEFENSE_SORT_OPTIONS.map((item) => <option value={item.key} key={item.key}>{item.label}</option>)}
+                </select>
+              ) : (
+                <select aria-label="Sort metric" value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(density * 3); }}>
+                  {sortGroups.map((group) => (
+                    <optgroup label={group.label} key={group.label}>
+                      {group.keys.map((key) => <option value={key} key={key}>{SORT_LABELS[key]}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+              )}
               <button
                 type="button"
                 className="sort-direction"
-                aria-label={`Reverse sort order; currently ${sortKey === 'ecr' ? sortDirection === 'desc' ? 'best ECR first' : 'worst ECR first' : sortDirection === 'desc' ? 'highest first' : 'lowest first'}`}
-                title={`Currently ${sortKey === 'ecr' ? sortDirection === 'desc' ? 'best ECR first' : 'worst ECR first' : sortDirection === 'desc' ? 'highest first' : 'lowest first'}. Reverse order.`}
+                aria-label={`Reverse sort order; currently ${!isDefense && sortKey === 'ecr' ? sortDirection === 'desc' ? 'best ECR first' : 'worst ECR first' : sortDirection === 'desc' ? 'highest first' : 'lowest first'}`}
+                title="Reverse sort order"
                 onClick={() => { setSortDirection((current) => current === 'desc' ? 'asc' : 'desc'); setShown(density * 3); }}
               >
-                <span aria-hidden="true">{sortKey === 'ecr' ? sortDirection === 'desc' ? '↑' : '↓' : sortDirection === 'desc' ? '↓' : '↑'}</span>
+                <span aria-hidden="true">{!isDefense && sortKey === 'ecr' ? sortDirection === 'desc' ? '↑' : '↓' : sortDirection === 'desc' ? '↓' : '↑'}</span>
               </button>
             </div>
           </div>
@@ -915,7 +928,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         </section>
       )}
 
-      {hiddenPlayers.length > 0 && (
+      {!isDefense && hiddenPlayers.length > 0 && (
         <section className="hidden-bar" aria-label={`${hiddenPlayers.length} hidden player${hiddenPlayers.length === 1 ? '' : 's'}`}>
           <div className="hidden-status"><span>HIDDEN PLAYERS</span><strong>{hiddenPlayers.length} suppressed</strong></div>
           <div className="hidden-names">
@@ -929,7 +942,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         </section>
       )}
 
-      {pinned.length > 0 && (
+      {!isDefense && pinned.length > 0 && (
         <section className="compare-bar">
           <div><span>COMPARISON SET</span><strong>{pinned.length} selected</strong></div>
           <div className="compare-names">{pinned.map((id) => dataset.players.find((player) => player.playerId === id)?.name).filter(Boolean).map((name) => <span key={name}>{name}</span>)}</div>
@@ -942,7 +955,17 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         </section>
       )}
 
-      {displayProfiles.length ? (
+      {isDefense ? (
+        <DefenseView
+          profiles={rankedDefenses}
+          shown={shown}
+          density={density}
+          volumeMode={volumeMode}
+          geometry={geometryMode}
+          colorMode={colorMode}
+          onShowMore={() => setShown((current) => current + density * 3)}
+        />
+      ) : displayProfiles.length ? (
         <>
           {relatedActive && !compareMode && <div className="related-scale" aria-hidden="true"><span>← BETTER</span><strong>SEARCHED PLAYER</strong><span>WORSE →</span></div>}
           <section
@@ -984,7 +1007,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         density,
         sort: sortKey,
         sort_direction: sortDirection,
-        visible_player_count: availableProfiles.length,
+        visible_player_count: isDefense ? rankedDefenses.length : availableProfiles.length,
         comparison_active: compareMode,
         comparison_size: pinned.length,
         related_search_active: relatedActive,
