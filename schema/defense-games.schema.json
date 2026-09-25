@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FantasyStacks defense games",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "data"],
+  "properties": {
+    "schemaVersion": { "const": "1.4.0" },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gameId", "team", "opponent", "season", "week", "opponentPlays", "opponentYards", "opponentPoints", "sacks", "interceptions", "fumbleRecoveries", "defensiveTouchdowns", "specialTeamsTouchdowns", "safeties"],
+        "properties": {
+          "gameId": { "type": "string" },
+          "team": { "type": "string" },
+          "opponent": { "type": "string" },
+          "season": { "type": "integer" },
+          "week": { "type": "integer", "minimum": 1, "maximum": 22 },
+          "opponentPlays": { "type": "integer", "minimum": 0 },
+          "opponentYards": { "type": "integer", "minimum": 0 },
+          "opponentPoints": { "type": "integer", "minimum": 0 },
+          "sacks": { "type": "integer", "minimum": 0 },
+          "interceptions": { "type": "integer", "minimum": 0 },
+          "fumbleRecoveries": { "type": "integer", "minimum": 0 },
+          "defensiveTouchdowns": { "type": "integer", "minimum": 0 },
+          "specialTeamsTouchdowns": { "type": "integer", "minimum": 0 },
+          "safeties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

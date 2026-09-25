@@ -1,5 +1,5 @@
 export type Position = 'WR' | 'TE' | 'RB' | 'QB';
-export type PositionFilter = 'ALL' | 'FLEX' | 'RECEIVERS' | Position;
+export type PositionFilter = 'ALL' | 'FLEX' | 'RECEIVERS' | 'DEF' | Position;
 
 export interface Player {
   playerId: string;
@@ -49,6 +49,23 @@ export interface TeamGame {
   offensivePlays: number | null;
 }
 
+export interface DefenseGame {
+  gameId: string;
+  team: string;
+  opponent: string;
+  season: number;
+  week: number;
+  opponentPlays: number;
+  opponentYards: number;
+  opponentPoints: number;
+  sacks: number;
+  interceptions: number;
+  fumbleRecoveries: number;
+  defensiveTouchdowns: number;
+  specialTeamsTouchdowns: number;
+  safeties: number;
+}
+
 export interface Envelope<T> { schemaVersion: '1.4.0'; data: T[] }
 
 export interface Manifest {
@@ -56,9 +73,10 @@ export interface Manifest {
   generatedAt: string;
   season: number;
   seasons: number[];
+  currentSeasonThroughWeek: number;
   provider: { name: 'nflverse'; license: string; sourceUrls: string[] };
-  files: Record<'players' | 'playerGames' | 'teamGames', { path: string; records: number; sha256: string }>;
-  definitions: { offensivePossessions: string; offensivePlays: string; ecr: string; nullSemantics: string };
+  files: Record<'players' | 'playerGames' | 'teamGames' | 'defenseGames', { path: string; records: number; sha256: string }>;
+  definitions: { offensivePossessions: string; offensivePlays: string; ecr: string; opponentPoints: string; opponentYards: string; nullSemantics: string };
 }
 
 export interface Dataset {
@@ -66,6 +84,7 @@ export interface Dataset {
   players: Player[];
   playerGames: PlayerGame[];
   teamGames: TeamGame[];
+  defenseGames: DefenseGame[];
 }
 
 export function parseDataset(
@@ -73,8 +92,9 @@ export function parseDataset(
   players: unknown,
   playerGames: unknown,
   teamGames: unknown,
+  defenseGames: unknown,
 ): Dataset {
-  const envelopes = [players, playerGames, teamGames] as Array<{ schemaVersion?: unknown; data?: unknown }>;
+  const envelopes = [players, playerGames, teamGames, defenseGames] as Array<{ schemaVersion?: unknown; data?: unknown }>;
   if (!manifest || typeof manifest !== 'object' || (manifest as { schemaVersion?: unknown }).schemaVersion !== '1.4.0') {
     throw new Error('Unsupported FantasyStacks manifest');
   }
@@ -86,10 +106,11 @@ export function parseDataset(
     players: (players as Envelope<Player>).data,
     playerGames: (playerGames as Envelope<PlayerGame>).data,
     teamGames: (teamGames as Envelope<TeamGame>).data,
+    defenseGames: (defenseGames as Envelope<DefenseGame>).data,
   };
 }
 
-export type WindowKey = 'lastWeek' | 'last3' | 'last5' | 'thisYear' | 'lastYear';
+export type WindowKey = 'thisYear' | 'lastYear' | `week:${number}`;
 export type VolumeMode = 'total' | 'perGame';
 export type ScoringMode = 'full' | 'half' | 'off';
 export type SortKey =
@@ -223,15 +244,8 @@ export function aggregateProfiles(
   sortKey: SortKey,
 ): Profile[] {
   const selectedSeason = windowKey === 'lastYear' ? dataset.manifest.season - 1 : dataset.manifest.season;
-  const seasonGames = dataset.playerGames.filter((game) => game.season === selectedSeason);
-  const maximumWeek = Math.max(...seasonGames.map((game) => game.week));
-  const allowedWeeks = windowKey === 'lastWeek'
-    ? new Set([maximumWeek])
-    : windowKey === 'last3'
-      ? new Set([maximumWeek - 2, maximumWeek - 1, maximumWeek])
-      : windowKey === 'last5'
-        ? new Set([maximumWeek - 4, maximumWeek - 3, maximumWeek - 2, maximumWeek - 1, maximumWeek])
-        : null;
+  const selectedWeek = windowKey.startsWith('week:') ? Number(windowKey.slice('week:'.length)) : null;
+  const allowedWeeks = selectedWeek === null ? null : new Set([selectedWeek]);
   const players = new Map(dataset.players.map((player) => [player.playerId, player]));
   const teamGames = new Map(dataset.teamGames.map((game) => [`${game.gameId}:${game.team}`, game]));
   type Accumulator = Pick<Profile,
@@ -250,6 +264,8 @@ export function aggregateProfiles(
     const player = players.get(game.playerId);
     if (!player) continue;
     const context = teamGames.get(`${game.gameId}:${game.team}`);
+    // Only render complete stacks; an unknown snap count is not a zero.
+    if (game.offensiveSnaps === null || context?.offensivePlays == null) continue;
     const current = accumulators.get(game.playerId) ?? {
       playerId: game.playerId, name: player.name, headshotUrl: player.headshotUrl, position: game.position, team: game.team, ecr: player.ecr,
       games: 0, possessions: 0, teamPlays: 0, snaps: 0,

@@ -54,12 +54,13 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.includes('/data/v1/')) {
     event.respondWith(
       caches.open(CACHE_VERSION).then(async (cache) => {
-        const cached = await cache.match(request);
-        const refreshed = fetch(request).then((response) => {
+        try {
+          const response = await fetch(request);
           if (response.ok) cache.put(request, response.clone());
           return response;
-        }).catch(() => cached);
-        return cached ?? refreshed;
+        } catch {
+          return await cache.match(request) ?? Response.error();
+        }
       }),
     );
     return;

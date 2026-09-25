@@ -10,6 +10,7 @@ const pairs = [
   ['players.schema.json', 'players.json'],
   ['player-games.schema.json', 'player-games.json'],
   ['team-games.schema.json', 'team-games.json'],
+  ['defense-games.schema.json', 'defense-games.json'],
 ];
 
 for (const [schemaFile, dataFile] of pairs) {

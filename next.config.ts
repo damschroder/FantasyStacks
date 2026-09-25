@@ -1,4 +1,7 @@
 import type { NextConfig } from 'next';
+import { resolveBuildNumber } from './lib/resolve-build-number';
+
+process.env.NEXT_PUBLIC_APP_BUILD ??= String(resolveBuildNumber());
 
 const githubPages = process.env.GITHUB_PAGES === 'true';
 

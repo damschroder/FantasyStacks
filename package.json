@@ -12,12 +12,15 @@
     "build:pages": "node scripts/validate-contract.mjs && next build",
     "start": "vinext start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "data:refresh": "python scripts/refresh_data.py",
+    "typecheck": "tsc --project tsconfig.defense-check.json --noEmit",
+    "test:volume-mode": "node scripts/check-volume-mode.mjs",
+    "data:refresh": "python scripts/refresh_data.py && python scripts/refresh_defense_data.py",
     "test:data": "python scripts/check_data.py"
   },
   "dependencies": {
     "ajv": "^8.17.1",
     "next": "16.2.6",
+    "posthog-js": "^1.426.2",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },

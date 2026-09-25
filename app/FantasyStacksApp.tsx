@@ -2,6 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
+import { usePostHog } from 'posthog-js/react';
+import { APP_BUILD } from '@/lib/app-config';
+import { aggregateDefenses, DefenseSort } from '@/lib/defense-contract';
+import DefenseView, { DEFENSE_SORT_OPTIONS } from './DefenseView';
+import { BrandMark, periodLabel, PositionToggle, TeamPicker, windowLabel } from './StackChrome';
+import VolumeModeToggle from './VolumeModeToggle';
 import {
   aggregateProfiles,
   Dataset,
@@ -16,13 +22,6 @@ import {
   WindowKey,
 } from '@/lib/data-contract';
 
-const WINDOW_LABELS: Record<WindowKey, (season: number) => string> = {
-  lastWeek: () => 'Last week',
-  last3: () => 'Last 3',
-  last5: () => 'Last 5',
-  thisYear: (season) => `${season} season`,
-  lastYear: (season) => `${season - 1} season`,
-};
 const SORT_LABELS: Record<SortKey, string> = {
   ppr: 'Fantasy points',
   ecr: 'FP ECR',
@@ -96,11 +95,11 @@ const ALL_SORT_GROUPS: Array<{ label: string; keys: SortKey[] }> = [
 const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const percent = (value: number) => `${decimal.format(value * 100)}%`;
-const minimumGamesForWindow = (windowKey: WindowKey) => windowKey === 'thisYear' || windowKey === 'lastYear' ? 6 : windowKey === 'last5' ? 3 : windowKey === 'last3' ? 2 : 1;
 type SortDirection = 'desc' | 'asc';
 type GeometryMode = 'trapezoid' | 'block';
 type ColorMode = 'origional' | 'flow';
 type ThemeMode = 'light' | 'dark';
+type FeedbackReaction = 'love_it' | 'useful' | 'confusing' | 'bug';
 
 type StackLayer = {
   label: string;
@@ -122,93 +121,105 @@ const layerColorClass = (label: string) => {
   return '';
 };
 
-function BrandMark() {
-  return <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>;
-}
-
-function TeamPicker({
-  team,
-  teams,
-  onChange,
-}: {
-  team: string;
-  teams: string[];
-  onChange: (team: string) => void;
-}) {
+function FeedbackWidget({ context }: { context: Record<string, string | number | boolean> }) {
+  const posthog = usePostHog();
   const [open, setOpen] = useState(false);
-  const pickerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const selectedLogo = TEAM_LOGOS[team];
+  const [reaction, setReaction] = useState<FeedbackReaction | null>(null);
+  const [comment, setComment] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const closeOnOutsideClick = (event: PointerEvent) => {
-      if (!pickerRef.current?.contains(event.target as Node)) setOpen(false);
-    };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      setOpen(false);
-      triggerRef.current?.focus();
+      if (event.key === 'Escape') setOpen(false);
     };
-    document.addEventListener('pointerdown', closeOnOutsideClick);
     document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
+    return () => document.removeEventListener('keydown', closeOnEscape);
   }, [open]);
 
-  const selectTeam = (nextTeam: string) => {
-    onChange(nextTeam);
-    setOpen(false);
-    triggerRef.current?.focus();
+  const openFeedback = () => {
+    setOpen(true);
+    setSubmitted(false);
+    posthog.capture('fantasystacks_feedback_opened', context);
+    window.requestAnimationFrame(() => textareaRef.current?.focus());
   };
 
-  const teamIcon = (teamCode: string) => {
-    const logo = TEAM_LOGOS[teamCode];
-    return logo
-      ? <Image className="team-picker-logo" src={logo} alt="" width={26} height={26} loading="lazy" unoptimized />
-      : <span className="all-team-icon" aria-hidden="true">32</span>;
+  const submitFeedback = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const message = comment.trim();
+    if (!reaction && !message) return;
+    posthog.capture('fantasystacks_feedback_submitted', {
+      ...context,
+      reaction: reaction ?? 'comment_only',
+      feedback: message || undefined,
+    });
+    setSubmitted(true);
+    setReaction(null);
+    setComment('');
   };
 
   return (
-    <div className="team-picker" ref={pickerRef}>
-      <button
-        ref={triggerRef}
-        type="button"
-        className="team-picker-trigger"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls="team-filter-menu"
-        onClick={() => setOpen((current) => !current)}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowDown') {
-            event.preventDefault();
-            setOpen(true);
-          }
-        }}
-      >
-        <span className="team-picker-value">
-          {selectedLogo
-            ? <Image className="team-picker-logo" src={selectedLogo} alt="" width={26} height={26} loading="lazy" unoptimized />
-            : <span className="all-team-icon" aria-hidden="true">32</span>}
-          <strong>{team}</strong>
-        </span>
-        <span className="team-picker-caret" aria-hidden="true">{open ? '▲' : '▼'}</span>
-      </button>
+    <aside className="feedback-shell">
       {open && (
-        <div className="team-picker-menu" id="team-filter-menu" role="menu" aria-label="Select an NFL team">
-          <button type="button" role="menuitemradio" aria-checked={team === 'ALL'} className={team === 'ALL' ? 'selected' : ''} onClick={() => selectTeam('ALL')}>
-            {teamIcon('ALL')}<strong>ALL</strong>
-          </button>
-          {teams.map((teamCode) => (
-            <button type="button" role="menuitemradio" aria-checked={team === teamCode} className={team === teamCode ? 'selected' : ''} key={teamCode} onClick={() => selectTeam(teamCode)}>
-              {teamIcon(teamCode)}<strong>{teamCode}</strong>
-            </button>
-          ))}
-        </div>
+        <section className="feedback-panel" role="dialog" aria-labelledby="feedback-title">
+          <button className="feedback-close" type="button" aria-label="Close feedback" onClick={() => setOpen(false)}>×</button>
+          {submitted ? (
+            <div className="feedback-thanks" aria-live="polite">
+              <span aria-hidden="true">✓</span>
+              <h2 id="feedback-title">Got it. Thank you.</h2>
+              <p>Your note is in the pile shaping the next pass.</p>
+              <button type="button" onClick={() => setOpen(false)}>Back to the stacks</button>
+            </div>
+          ) : (
+            <form onSubmit={submitFeedback}>
+              <p className="feedback-kicker">ALPHA FEEDBACK</p>
+              <h2 id="feedback-title">How is this working for you?</h2>
+              <div className="feedback-reactions" aria-label="Quick reaction">
+                {([
+                  ['love_it', 'Love it'],
+                  ['useful', 'Useful'],
+                  ['confusing', 'Confusing'],
+                  ['bug', 'Found a bug'],
+                ] as Array<[FeedbackReaction, string]>).map(([value, label]) => (
+                  <button
+                    type="button"
+                    key={value}
+                    className={reaction === value ? 'active' : ''}
+                    aria-pressed={reaction === value}
+                    onClick={() => setReaction(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <label htmlFor="feedback-comment">What should we keep, change, or fix?</label>
+              <textarea
+                ref={textareaRef}
+                id="feedback-comment"
+                value={comment}
+                maxLength={1200}
+                placeholder="A sentence is plenty…"
+                onChange={(event) => setComment(event.target.value)}
+              />
+              <div className="feedback-submit-row">
+                <small>Current view settings are attached automatically.</small>
+                <button type="submit" disabled={!reaction && !comment.trim()}>Send feedback</button>
+              </div>
+            </form>
+          )}
+        </section>
       )}
-    </div>
+      <button
+        className="feedback-trigger"
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => open ? setOpen(false) : openFeedback()}
+      >
+        <span aria-hidden="true">●</span> Feedback
+      </button>
+    </aside>
   );
 }
 
@@ -364,6 +375,42 @@ function PlayerStack({
   onTogglePin: () => void;
 }) {
   const perGame = volumeMode === 'perGame';
+  const stackRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const stack = stackRef.current;
+    if (!stack) return;
+    let active = true;
+    const fit = () => {
+      if (!active) return;
+      for (const rate of stack.querySelectorAll<HTMLElement>('.rate-label')) {
+        rate.dataset.compact = 'false';
+        rate.dataset.compact = String(rate.getBoundingClientRect().width > stack.clientWidth - 4);
+      }
+      for (const tier of stack.querySelectorAll<HTMLElement>('.tier')) {
+        const label = tier.querySelector<HTMLElement>('.tier-label')!;
+        const rank = tier.querySelector<HTMLElement>('.tier-rank')!;
+        const value = tier.querySelector<HTMLElement>('strong')!;
+        tier.dataset.fit = 'full';
+        tier.style.removeProperty('--fitted-value-size');
+        const style = getComputedStyle(tier);
+        const room = tier.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+        const gap = parseFloat(style.columnGap) || 0;
+        const valueWidth = value.getBoundingClientRect().width;
+        if (rank.scrollWidth + label.scrollWidth + valueWidth + gap * 2 + 4 > room) {
+          tier.dataset.fit = rank.scrollWidth + valueWidth + gap + 4 <= room ? 'compact' : 'value';
+        }
+        if (tier.dataset.fit === 'value' && valueWidth > room) {
+          tier.style.setProperty('--fitted-value-size', `${Math.max(1, parseFloat(getComputedStyle(value).fontSize) * Math.max(1, room) / valueWidth)}px`);
+        }
+      }
+    };
+    const observer = new ResizeObserver(fit);
+    observer.observe(stack);
+    stack.querySelectorAll('.tier').forEach((tier) => observer.observe(tier));
+    fit();
+    void document.fonts.ready.then(fit);
+    return () => { active = false; observer.disconnect(); };
+  }, [profile, volumeMode, geometryMode]);
   const volume = (value: number) => perGame ? decimal.format(value / profile.games) : integer.format(value);
   const splitValue = (value: number, label: string) => `${volume(value)} ${label}${perGame ? ' / game' : ''}`;
   const receiverLayers: StackLayer[] = [
@@ -448,14 +495,14 @@ function PlayerStack({
                 />
               )}
             </span>
-            <h2>{profile.name}</h2>
+            <h2 title={profile.name}>{profile.name}</h2>
           </div>
           {profile.position === 'RB' && <p className="role-legend"><span className="rush-key">RUSH / TOUCH</span><span className="receive-key">TARGET / RECEIVE</span></p>}
           {profile.position === 'QB' && <p className="role-legend"><span className="sack-key">SACKS</span><span className="interception-key">INTERCEPTIONS</span></p>}
         </div>
         <span className="rank">{String(rank).padStart(2, '0')}</span>
       </div>
-      <div className="stack">
+      <div className="stack" ref={stackRef}>
         {[...layers].reverse().map((layer, reverseIndex) => {
           const index = layers.length - 1 - reverseIndex;
           const width = geometryMode === 'block' ? profile.blockWidths[index] : 17 + profile.widths[index] * 0.83;
@@ -466,11 +513,12 @@ function PlayerStack({
           const tierClass = `tier tier-${reverseIndex} ${layerColorClass(layer.label)}${layer.split ? ' split-tier' : ''}${layer.receivingOnly ? ' receiving-tier' : ''}`;
           return (
             <div className="tier-wrap" key={layer.label}>
-              {layer.rate && <span className="rate-label">{layer.rate}</span>}
+              {layer.rate && <span className="rate-label" title={layer.rate} aria-label={layer.rate}><span>{layer.rate.split(' ')[0]}</span><span className="rate-description"> {layer.rate.split(' ').slice(1).join(' ')}</span></span>}
               <div
                 className={tierClass}
-                title={layer.split?.description ?? `${layer.label}: ${layer.value}`}
-                style={{ width: `${width}%`, height: `${height}px`, '--split': `${splitPercent}%` } as React.CSSProperties}
+                title={`${layer.label}: ${layer.value} · Rank ${layerRank.rank}/${layerRank.total}${layer.split ? ` · ${layer.split.description}` : ''}`}
+                aria-label={`${layer.label}: ${layer.value}, rank ${layerRank.rank} out of ${layerRank.total}`}
+                style={{ width: `${width}%`, height: `${height}px`, paddingInline: `max(2px, ${width * 0.06}%)`, '--split': `${splitPercent}%` } as React.CSSProperties}
               >
                 <span className="tier-rank" aria-label={`Rank ${layerRank.rank} out of ${layerRank.total}`}>{layerRank.rank}/{layerRank.total}</span>
                 <span className={`tier-label${layer.label === 'Team plays' ? ' team-plays-label' : ''}`}>{layer.label}</span>
@@ -502,16 +550,17 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   const [colorMode, setColorMode] = useState<ColorMode>('origional');
   const [position, setPosition] = useState<PositionFilter>('RECEIVERS');
   const [team, setTeam] = useState('ALL');
-  const [minGames, setMinGames] = useState(6);
+  const [minGames, setMinGames] = useState(1);
   const [minTargets, setMinTargets] = useState(2);
   const [sortKey, setSortKey] = useState<SortKey>('ppr');
+  const [defenseSort, setDefenseSort] = useState<DefenseSort>('fantasyPoints');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [pinned, setPinned] = useState<string[]>([]);
   const [hidden, setHidden] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
   const [density, setDensity] = useState(8);
   const [minEcr, setMinEcr] = useState(1);
-  const [maxEcr, setMaxEcr] = useState(Math.min(225, rankedEcrCeiling));
+  const [maxEcr, setMaxEcr] = useState(ecrUnrankedSentinel);
   const [shown, setShown] = useState(24);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -521,24 +570,60 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem('fantasy-stacks-theme');
-    const nextTheme: ThemeMode = savedTheme === 'dark' || savedTheme === 'light'
-      ? savedTheme
-      : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const appliedTheme = document.documentElement.dataset.theme;
+    const nextTheme: ThemeMode = appliedTheme === 'dark' || appliedTheme === 'light'
+      ? appliedTheme
+      : savedTheme === 'dark' || savedTheme === 'light'
+        ? savedTheme
+        : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     const frame = window.requestAnimationFrame(() => {
       setThemeMode(nextTheme);
       document.documentElement.dataset.theme = nextTheme;
     });
-    return () => window.cancelAnimationFrame(frame);
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+    const followSystemTheme = (event: MediaQueryListEvent) => {
+      if (window.localStorage.getItem('fantasy-stacks-theme')) return;
+      const systemChoice: ThemeMode = event.matches ? 'dark' : 'light';
+      setThemeMode(systemChoice);
+      document.documentElement.dataset.theme = systemChoice;
+    };
+    systemTheme.addEventListener('change', followSystemTheme);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      systemTheme.removeEventListener('change', followSystemTheme);
+    };
   }, []);
 
-  const teams = useMemo(() => [...new Set(dataset.playerGames.map((game) => game.team))].sort(), [dataset]);
+  const isDefense = position === 'DEF';
+  const teams = useMemo(() => [...new Set([
+    ...dataset.playerGames.map((game) => game.team),
+    ...dataset.defenseGames.map((game) => game.team),
+  ])].sort(), [dataset]);
+  const windowOptions = useMemo<WindowKey[]>(() => {
+    const weeks = [...new Set([
+      ...dataset.playerGames
+        .filter((game) => game.season === dataset.manifest.season && game.played)
+        .map((game) => game.week),
+      ...dataset.defenseGames
+        .filter((game) => game.season === dataset.manifest.season)
+        .map((game) => game.week),
+    ])]
+      .sort((a, b) => a - b)
+      .map((week): WindowKey => `week:${week}`);
+    return [...weeks, 'thisYear', 'lastYear'];
+  }, [dataset]);
   const rankedProfiles = useMemo(
     () => {
+      if (isDefense) return [];
       const ranked = aggregateProfiles(dataset, windowKey, position, team, minGames, minTargets, minEcr, Math.min(maxEcr, rankedEcrCeiling), maxEcr === ecrUnrankedSentinel, volumeMode, scoringMode, sortKey);
       return sortDirection === 'desc' ? ranked : [...ranked].reverse();
     },
-    [dataset, windowKey, position, team, minGames, minTargets, minEcr, maxEcr, rankedEcrCeiling, ecrUnrankedSentinel, volumeMode, scoringMode, sortKey, sortDirection],
+    [dataset, windowKey, position, team, minGames, minTargets, minEcr, maxEcr, rankedEcrCeiling, ecrUnrankedSentinel, volumeMode, scoringMode, sortKey, sortDirection, isDefense],
   );
+  const rankedDefenses = useMemo(() => {
+    const ranked = aggregateDefenses(dataset, windowKey, team, minGames, volumeMode, defenseSort);
+    return sortDirection === 'desc' ? ranked : [...ranked].reverse();
+  }, [dataset, windowKey, team, minGames, volumeMode, defenseSort, sortDirection]);
   const availableProfiles = useMemo(
     () => rankedProfiles.filter((profile) => !hidden.includes(profile.playerId)),
     [rankedProfiles, hidden],
@@ -609,19 +694,26 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   );
   const displayProfiles = compareMode ? comparisonProfiles : relatedActive ? relatedResult.profiles : matchingProfiles;
   const visibleProfiles = compareMode || relatedActive ? displayProfiles : displayProfiles.slice(0, shown);
-  const displayDensity = relatedActive && !compareMode ? 7 : density;
+  const displayDensity = relatedActive && !compareMode
+    ? 7
+    : normalizedSearch && !compareMode
+      ? Math.max(1, Math.min(density, displayProfiles.length))
+      : density;
   const sortGroups = position === 'ALL' ? ALL_SORT_GROUPS : position === 'QB' ? QB_SORT_GROUPS : position === 'FLEX' ? FLEX_SORT_GROUPS : position === 'RB' ? RB_SORT_GROUPS : RECEIVER_SORT_GROUPS;
   const usageOptions = position === 'QB' ? [0, 5, 10, 15, 20, 25, 30, 35, 40, 45] : position === 'ALL' ? [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30] : position === 'RB' || position === 'FLEX' ? [0, 2, 4, 6, 8, 10, 12, 15, 20] : [0, 1, 2, 3, 4, 5, 6];
 
   const changeWindow = (next: WindowKey) => {
     setWindowKey(next);
-    setMinGames(minimumGamesForWindow(next));
+    // Keep early-season windows usable; users can raise the qualification manually.
+    setMinGames(1);
     setShown(density * 3);
   };
   const changePosition = (next: PositionFilter) => {
     setPosition(next);
-    setMinTargets(2);
-    setSortKey('ppr');
+    if (next !== 'DEF' && position !== 'DEF') {
+      setMinTargets(2);
+      setSortKey('ppr');
+    }
     setPinned([]);
     setCompareMode(false);
     setShown(density * 3);
@@ -632,6 +724,25 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       : [...pinned, playerId];
     setPinned(next);
     if (!next.length) setCompareMode(false);
+  };
+  const toggleComparison = () => {
+    if (compareMode) {
+      setCompareMode(false);
+      return;
+    }
+
+    // Comparison is a clean destination: discovery filters must not hide
+    // players that were already added to the comparison set.
+    setTeam('ALL');
+    setMinGames(1);
+    setMinTargets(0);
+    setMinEcr(1);
+    setMaxEcr(ecrUnrankedSentinel);
+    setPlayerSearch('');
+    setRelatedSearch(false);
+    setFiltersOpen(false);
+    setCompareMode(true);
+    setShown(Math.max(density * 3, pinned.length));
   };
   const hidePlayer = (profile: Profile) => {
     setHidden((current) => current.includes(profile.playerId) ? current : [...current, profile.playerId]);
@@ -654,7 +765,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
     <main>
       <nav className="topbar">
         <a className="brand" href="#top" aria-label="FantasyStacks home"><BrandMark /><span>FANTASY<span>STACKS</span></span></a>
-        <div className="season-label">{windowKey === 'lastYear' ? dataset.manifest.season - 1 : dataset.manifest.season} REGULAR SEASON</div>
+        <div className="season-label">{periodLabel(windowKey, dataset.manifest.season, dataset.manifest.currentSeasonThroughWeek)}</div>
         <div className="topbar-actions">
           <button className="theme-button" type="button" aria-pressed={themeMode === 'dark'} onClick={toggleTheme}>
             {themeMode === 'dark' ? 'Light mode' : 'Dark mode'}
@@ -669,23 +780,17 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       </section>
 
       <section className="control-deck" aria-label="Stack view controls">
-        <div className="control-group">
+        <div className="control-group window-group">
           <span className="control-label">WINDOW</span>
           <div className="segmented">
-            {(Object.keys(WINDOW_LABELS) as WindowKey[]).map((key) => (
-              <button key={key} className={windowKey === key ? 'active' : ''} onClick={() => changeWindow(key)}>{WINDOW_LABELS[key](dataset.manifest.season)}</button>
+            {windowOptions.map((key) => (
+              <button key={key} className={windowKey === key ? 'active' : ''} onClick={() => changeWindow(key)}>{windowLabel(key, dataset.manifest.season, dataset.manifest.currentSeasonThroughWeek)}</button>
             ))}
           </div>
         </div>
         <div className="control-group normalization-group">
           <span className="control-label">NORMALIZE</span>
-          <div className="segmented compact">
-            {(['total', 'perGame'] as const).map((value) => (
-              <button key={value} className={volumeMode === value ? 'active' : ''} onClick={() => { setVolumeMode(value); setShown(density * 3); }}>
-                {value === 'total' ? 'Total' : 'Per game'}
-              </button>
-            ))}
-          </div>
+          <VolumeModeToggle value={volumeMode} onChange={(value) => { setVolumeMode(value); setShown(density * 3); }} />
         </div>
         <div className="control-group scoring-group">
           <span className="control-label">PPR</span>
@@ -756,21 +861,19 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         </div>
       </section>
 
-      <section className="results-head" aria-label="Player filters and sorting">
+      <section className="results-head" aria-label="Stack filters and sorting">
         <div className="results-summary">
-          <p>{compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${WINDOW_LABELS[windowKey](dataset.manifest.season).toUpperCase()}`}</p>
-          <div className="results-count"><strong>{availableProfiles.length}</strong><span>VISIBLE<br />PLAYERS</span></div>
+          <p>{isDefense ? `DEFENSIVE PROFILES · ${windowLabel(windowKey, dataset.manifest.season, dataset.manifest.currentSeasonThroughWeek).toUpperCase()}` : compareMode ? `COMPARISON · ${displayProfiles.length} STACKS` : relatedActive && anchorProfile ? `RELATED TO ${anchorProfile.name.toUpperCase()} · ${relatedResult.betterCount} BETTER · ${relatedResult.worseCount} WORSE` : `PRODUCTION PROFILES · ${windowLabel(windowKey, dataset.manifest.season, dataset.manifest.currentSeasonThroughWeek).toUpperCase()}`}</p>
+          <div className="results-count"><strong>{isDefense ? rankedDefenses.length : availableProfiles.length}</strong><span>VISIBLE<br />{isDefense ? 'DEFENSES' : 'PLAYERS'}</span></div>
         </div>
         <div className="results-tools">
+          <div className="team-label">
+            <span>TEAM</span>
+            <TeamPicker team={team} teams={teams} onChange={setTeam} />
+          </div>
           <div className="position-label">
             <span>POSITION</span>
-            <div className="segmented position-toggle">
-              {(['ALL', 'FLEX', 'RECEIVERS', 'WR', 'TE', 'RB', 'QB'] as const).map((value) => (
-                <button key={value} className={position === value ? 'active' : ''} onClick={() => changePosition(value)} title={value === 'ALL' ? 'Quarterbacks, running backs, wide receivers, and tight ends' : value === 'FLEX' ? 'Running backs, wide receivers, and tight ends' : undefined}>
-                  {value === 'RECEIVERS' ? 'WR + TE' : value}
-                </button>
-              ))}
-            </div>
+            <PositionToggle position={position} onChange={changePosition} />
           </div>
           <PlayerSearchControl
             value={playerSearch}
@@ -810,21 +913,27 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
           </label>
           <div className="sort-label"><span>SORT</span>
             <div className="sort-input">
-              <select aria-label="Sort metric" value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(density * 3); }}>
-                {sortGroups.map((group) => (
-                  <optgroup label={group.label} key={group.label}>
-                    {group.keys.map((key) => <option value={key} key={key}>{SORT_LABELS[key]}</option>)}
-                  </optgroup>
-                ))}
-              </select>
+              {isDefense ? (
+                <select aria-label="Sort metric" value={defenseSort} onChange={(event) => { setDefenseSort(event.target.value as DefenseSort); setShown(density * 3); }}>
+                  {DEFENSE_SORT_OPTIONS.map((item) => <option value={item.key} key={item.key}>{item.label}</option>)}
+                </select>
+              ) : (
+                <select aria-label="Sort metric" value={sortKey} onChange={(event) => { setSortKey(event.target.value as SortKey); setShown(density * 3); }}>
+                  {sortGroups.map((group) => (
+                    <optgroup label={group.label} key={group.label}>
+                      {group.keys.map((key) => <option value={key} key={key}>{SORT_LABELS[key]}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+              )}
               <button
                 type="button"
                 className="sort-direction"
-                aria-label={`Reverse sort order; currently ${sortKey === 'ecr' ? sortDirection === 'desc' ? 'best ECR first' : 'worst ECR first' : sortDirection === 'desc' ? 'highest first' : 'lowest first'}`}
-                title={`Currently ${sortKey === 'ecr' ? sortDirection === 'desc' ? 'best ECR first' : 'worst ECR first' : sortDirection === 'desc' ? 'highest first' : 'lowest first'}. Reverse order.`}
+                aria-label={`Reverse sort order; currently ${!isDefense && sortKey === 'ecr' ? sortDirection === 'desc' ? 'best ECR first' : 'worst ECR first' : sortDirection === 'desc' ? 'highest first' : 'lowest first'}`}
+                title="Reverse sort order"
                 onClick={() => { setSortDirection((current) => current === 'desc' ? 'asc' : 'desc'); setShown(density * 3); }}
               >
-                <span aria-hidden="true">{sortKey === 'ecr' ? sortDirection === 'desc' ? '↑' : '↓' : sortDirection === 'desc' ? '↓' : '↑'}</span>
+                <span aria-hidden="true">{!isDefense && sortKey === 'ecr' ? sortDirection === 'desc' ? '↑' : '↓' : sortDirection === 'desc' ? '↓' : '↑'}</span>
               </button>
             </div>
           </div>
@@ -836,14 +945,13 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 
       {filtersOpen && (
         <section className="filter-panel" aria-label="Minimum qualification filters">
-          <div className="filter-field"><span>TEAM</span><TeamPicker team={team} teams={teams} onChange={setTeam} /></div>
           <label>MIN. GAMES<select value={minGames} onChange={(event) => setMinGames(Number(event.target.value))}>{[1, 2, 3, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <label>MIN. {position === 'ALL' ? 'USAGE' : position === 'QB' ? 'PASSES' : position === 'RB' || position === 'FLEX' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <button onClick={() => { setTeam('ALL'); setMinGames(minimumGamesForWindow(windowKey)); setMinTargets(2); setHidden([]); }}>Reset filters</button>
+          <button onClick={() => { setTeam('ALL'); setMinGames(1); setMinTargets(2); setHidden([]); setPlayerSearch(''); setRelatedSearch(false); }}>Reset filters</button>
         </section>
       )}
 
-      {hiddenPlayers.length > 0 && (
+      {!isDefense && hiddenPlayers.length > 0 && (
         <section className="hidden-bar" aria-label={`${hiddenPlayers.length} hidden player${hiddenPlayers.length === 1 ? '' : 's'}`}>
           <div className="hidden-status"><span>HIDDEN PLAYERS</span><strong>{hiddenPlayers.length} suppressed</strong></div>
           <div className="hidden-names">
@@ -857,12 +965,12 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         </section>
       )}
 
-      {pinned.length > 0 && (
+      {!isDefense && pinned.length > 0 && (
         <section className="compare-bar">
           <div><span>COMPARISON SET</span><strong>{pinned.length} selected</strong></div>
           <div className="compare-names">{pinned.map((id) => dataset.players.find((player) => player.playerId === id)?.name).filter(Boolean).map((name) => <span key={name}>{name}</span>)}</div>
           <div className="compare-actions">
-            <button className="compare-button" onClick={() => { setCompareMode((current) => !current); setShown(Math.max(density * 3, pinned.length)); }}>
+            <button className="compare-button" onClick={toggleComparison}>
               {compareMode ? 'Show all stacks' : `Compare ${pinned.length}`}
             </button>
             <button onClick={() => { setPinned([]); setCompareMode(false); }}>Clear</button>
@@ -870,7 +978,17 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         </section>
       )}
 
-      {displayProfiles.length ? (
+      {isDefense ? (
+        <DefenseView
+          profiles={rankedDefenses}
+          shown={shown}
+          density={density}
+          volumeMode={volumeMode}
+          geometry={geometryMode}
+          colorMode={colorMode}
+          onShowMore={() => setShown((current) => current + density * 3)}
+        />
+      ) : displayProfiles.length ? (
         <>
           {relatedActive && !compareMode && <div className="related-scale" aria-hidden="true"><span>← BETTER</span><strong>SEARCHED PLAYER</strong><span>WORSE →</span></div>}
           <section
@@ -892,9 +1010,31 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       )}
 
       <footer>
-        <span>ALPHA · {dataset.manifest.seasons.join('–')} DATA · {dataset.manifest.provider.name.toUpperCase()}</span>
+        <p className="footer-blurb">Get the fantasy football decision support data that you need without navigating across 20 pages and seven different websites.</p>
+        <span>ALPHA · BUILD {APP_BUILD} · {dataset.manifest.seasons.join('–')} DATA · {dataset.manifest.provider.name.toUpperCase()}</span>
         <p>Width = peer-relative volume. Height = transition efficiency. <a href="https://nflverse.nflverse.com/" target="_blank" rel="noreferrer">Data via nflverse ↗</a></p>
       </footer>
+
+      <FeedbackWidget context={{
+        window: windowKey,
+        normalize: volumeMode,
+        ppr: scoringMode,
+        geometry: geometryMode,
+        color: colorMode,
+        position,
+        team,
+        minimum_games: minGames,
+        minimum_usage: minTargets,
+        ecr_minimum: minEcr,
+        ecr_maximum: maxEcr === ecrUnrankedSentinel ? 'NR' : maxEcr,
+        density,
+        sort: sortKey,
+        sort_direction: sortDirection,
+        visible_player_count: isDefense ? rankedDefenses.length : availableProfiles.length,
+        comparison_active: compareMode,
+        comparison_size: pinned.length,
+        related_search_active: relatedActive,
+      }} />
 
       {guideOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setGuideOpen(false)}>
@@ -910,7 +1050,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               <div><strong>RB COLOR</strong><p>Team color shows rushing touches and production. The highlight color shows targets and receiving production.</p></div>
               <div><strong>QB COLOR</strong><p>The split loss layer separates sacks in team color from interceptions in the highlight color. Its height rewards clean dropbacks.</p></div>
               <div><strong>FP ECR RANGE</strong><p>Limits the field to the current FantasyPros redraft consensus range. The upper NR endpoint retains players without a current ranking.</p></div>
-              <div><strong>NORMALIZE</strong><p>Total compares accumulated volume. Per game normalizes layer values, widths, fantasy points, and volume sorting for every selected time window.</p></div>
+              <div><strong>NORMALIZE</strong><p>Total compares accumulated volume. Per game normalizes layer values, widths, fantasy points, and volume sorting using only games the player appeared in; missed games are excluded.</p></div>
               <div><strong>PPR SCORING</strong><p>Full adds 1 point per catch, Half adds 0.5, and Off removes the reception bonus. Fantasy-point width and sorting update immediately.</p></div>
               <div><strong>RELATED PLAYERS</strong><p>Uses ECR to define better and worse, then favors nearby ECR and prior-season fantasy points, the same position, and the same team. The searched player stays in the center.</p></div>
               <div><strong>LABELS</strong><p>Each layer shows its rank within the relevant team or active player field, the metric name, its raw total, and the exact rate that controls its height.</p></div>
@@ -929,14 +1069,14 @@ export default function FantasyStacksApp() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const files = ['manifest.json', 'players.json', 'player-games.json', 'team-games.json'];
+    const files = ['manifest.json', 'players.json', 'player-games.json', 'team-games.json', 'defense-games.json'];
     Promise.all(files.map(async (file) => {
       const response = await fetch(`./data/v1/${file}`, { signal: controller.signal });
       if (!response.ok) throw new Error(`Unable to load ${file} (${response.status})`);
       return response.json() as Promise<unknown>;
     }))
-      .then(([manifest, players, playerGames, teamGames]) => {
-        setDataset(parseDataset(manifest, players, playerGames, teamGames));
+      .then(([manifest, players, playerGames, teamGames, defenseGames]) => {
+        setDataset(parseDataset(manifest, players, playerGames, teamGames, defenseGames));
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : 'Unable to load FantasyStacks data');
