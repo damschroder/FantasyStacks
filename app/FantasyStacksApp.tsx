@@ -694,7 +694,11 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
   );
   const displayProfiles = compareMode ? comparisonProfiles : relatedActive ? relatedResult.profiles : matchingProfiles;
   const visibleProfiles = compareMode || relatedActive ? displayProfiles : displayProfiles.slice(0, shown);
-  const displayDensity = relatedActive && !compareMode ? 7 : density;
+  const displayDensity = relatedActive && !compareMode
+    ? 7
+    : normalizedSearch && !compareMode
+      ? Math.max(1, Math.min(density, displayProfiles.length))
+      : density;
   const sortGroups = position === 'ALL' ? ALL_SORT_GROUPS : position === 'QB' ? QB_SORT_GROUPS : position === 'FLEX' ? FLEX_SORT_GROUPS : position === 'RB' ? RB_SORT_GROUPS : RECEIVER_SORT_GROUPS;
   const usageOptions = position === 'QB' ? [0, 5, 10, 15, 20, 25, 30, 35, 40, 45] : position === 'ALL' ? [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30] : position === 'RB' || position === 'FLEX' ? [0, 2, 4, 6, 8, 10, 12, 15, 20] : [0, 1, 2, 3, 4, 5, 6];
 
