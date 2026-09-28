@@ -1,6 +1,6 @@
 # FantasyStacks
 
-The current published snapshot includes every fully completed 2026 regular-season week available from nflverse and the full 2025 comparison season. Minimum games defaults to one; unranked players are included. Stacks with unknown snaps or team plays are withheld. This is a post-game snapshot, not a live feed. The manifest records the latest completed week, and the app states that cutoff anywhere it presents a season-to-date view.
+The current published snapshot includes every completed 2026 regular-season game available across the required nflverse feeds and the full 2025 comparison season. Minimum games defaults to one; unranked players are included. Stacks with unknown snaps or team plays are withheld. This is a frequently refreshed post-game snapshot, not a live feed. The manifest records how many games are included in the latest week, and the app shows that coverage anywhere it presents a season-to-date view.
 
 FantasyStacks is an experimental fantasy-football visualization for comparing WR, TE, RB, and QB opportunity-to-production profiles.
 
@@ -55,7 +55,7 @@ Local development remains at `http://localhost:3000`; the `/FantasyStacks` base 
 npm run data:refresh
 ```
 
-The refresh script downloads the 2025 and 2026 nflverse player-stat, snap-count, play-by-play, schedule, and player-identity Parquet feeds. It includes current-season weeks only after every scheduled game in that week has a final score, then emits compact canonical JSON under `public/data/v1`.
+The refresh script downloads the 2025 and 2026 nflverse player-stat, team-stat, snap-count, play-by-play, schedule, and player-identity Parquet feeds. It includes each current-season game as soon as that game is final and available in every feed required by the offense and defense views, then emits compact canonical JSON under `public/data/v1`.
 
 ## Data contract
 

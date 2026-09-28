@@ -1,12 +1,16 @@
 {
   "schemaVersion": "1.4.0",
-  "generatedAt": "2026-09-22T19:57:12.970389Z",
+  "generatedAt": "2026-09-28T19:20:56.311543Z",
   "season": 2026,
   "seasons": [
     2025,
     2026
   ],
-  "currentSeasonThroughWeek": 2,
+  "currentSeasonThroughWeek": 3,
+  "currentWeekGamesIncluded": 15,
+  "currentWeekGamesScheduled": 16,
+  "currentSeasonGamesIncluded": 47,
+  "currentSeasonGamesScheduledThroughWeek": 48,
   "provider": {
     "name": "nflverse",
     "license": "CC BY 4.0; underlying NFL data remains subject to its owners' terms",
@@ -16,35 +20,35 @@
       "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2025.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2025.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2025.parquet",
+      "https://github.com/nflverse/nflverse-data/releases/download/stats_team/stats_team_week_2025.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2026.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2026.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2026.parquet",
+      "https://github.com/nflverse/nflverse-data/releases/download/stats_team/stats_team_week_2026.parquet",
       "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_fpecr_latest.csv",
-      "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_playerids.csv",
-      "https://github.com/nflverse/nflverse-data/releases/download/stats_team/stats_team_week_2025.parquet",
-      "https://github.com/nflverse/nflverse-data/releases/download/stats_team/stats_team_week_2026.parquet"
+      "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_playerids.csv"
     ]
   },
   "files": {
     "players": {
       "path": "/data/v1/players.json",
-      "records": 659,
-      "sha256": "8b88fbca263e804e9938e049a8738b90f316f683487ada5ef141355d4fd8a7d8"
+      "records": 668,
+      "sha256": "46d4f99bf6c96f8e41575d953957afd7376551bb522e9b833c4a606034ec8967"
     },
     "playerGames": {
       "path": "/data/v1/player-games.json",
-      "records": 6440,
-      "sha256": "a8fc7873636acb85481f0d744dba30e9e984d0b62a8d975fd89fe8d0b1ca3285"
+      "records": 6759,
+      "sha256": "c06f660bc4b7d7e4e7e4ef2ad51cac9398bf73a2cd9826bf373d6a73f05ebcc2"
     },
     "teamGames": {
       "path": "/data/v1/team-games.json",
-      "records": 608,
-      "sha256": "45696a3949a4b8b19e43474b0fd8b6dea492067986136f60d5c17c0df7b13958"
+      "records": 638,
+      "sha256": "a2ea457cc94f12d467a92afe78d3f475aedaf0c2c942b381bf1cf6e3e90a8971"
     },
     "defenseGames": {
       "path": "/data/v1/defense-games.json",
-      "records": 608,
-      "sha256": "d28d066cd0f04c88605836071409543bb72bf131b051da928267aa602f42b38e"
+      "records": 638,
+      "sha256": "31140699156e553255ffe197f3516120877e4241d158c2da10b4144e1040d330"
     }
   },
   "definitions": {

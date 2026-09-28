@@ -10,8 +10,19 @@ export const windowLabel = (windowKey: WindowKey, season: number, throughWeek: n
   return `Week ${windowKey.slice('week:'.length)}`;
 };
 
-export const periodLabel = (windowKey: WindowKey, season: number, throughWeek: number) => {
-  if (windowKey === 'thisYear') return `${season} REGULAR SEASON · THROUGH WEEK ${throughWeek}`;
+export const periodLabel = (
+  windowKey: WindowKey,
+  season: number,
+  throughWeek: number,
+  currentWeekGamesIncluded?: number,
+  currentWeekGamesScheduled?: number,
+) => {
+  if (windowKey === 'thisYear') {
+    const weekStatus = currentWeekGamesIncluded !== undefined && currentWeekGamesScheduled !== undefined
+      ? ` · ${currentWeekGamesIncluded} OF ${currentWeekGamesScheduled} GAMES`
+      : '';
+    return `${season} REGULAR SEASON · THROUGH WEEK ${throughWeek}${weekStatus}`;
+  }
   if (windowKey === 'lastYear') return `${season - 1} REGULAR SEASON · FULL`;
   return `${season} REGULAR SEASON · WEEK ${windowKey.slice('week:'.length)}`;
 };

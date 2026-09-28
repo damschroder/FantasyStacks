@@ -4,13 +4,17 @@
   "title": "FantasyStacks manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "generatedAt", "season", "seasons", "currentSeasonThroughWeek", "provider", "files", "definitions"],
+  "required": ["schemaVersion", "generatedAt", "season", "seasons", "currentSeasonThroughWeek", "currentWeekGamesIncluded", "currentWeekGamesScheduled", "currentSeasonGamesIncluded", "currentSeasonGamesScheduledThroughWeek", "provider", "files", "definitions"],
   "properties": {
     "schemaVersion": { "const": "1.4.0" },
     "generatedAt": { "type": "string", "format": "date-time" },
     "season": { "type": "integer", "minimum": 1999 },
     "seasons": { "type": "array", "items": { "type": "integer", "minimum": 1999 }, "minItems": 2, "uniqueItems": true },
     "currentSeasonThroughWeek": { "type": "integer", "minimum": 1, "maximum": 22 },
+    "currentWeekGamesIncluded": { "type": "integer", "minimum": 1, "maximum": 16 },
+    "currentWeekGamesScheduled": { "type": "integer", "minimum": 1, "maximum": 16 },
+    "currentSeasonGamesIncluded": { "type": "integer", "minimum": 1, "maximum": 272 },
+    "currentSeasonGamesScheduledThroughWeek": { "type": "integer", "minimum": 1, "maximum": 272 },
     "provider": {
       "type": "object",
       "additionalProperties": false,

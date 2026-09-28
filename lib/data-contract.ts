@@ -74,6 +74,10 @@ export interface Manifest {
   season: number;
   seasons: number[];
   currentSeasonThroughWeek: number;
+  currentWeekGamesIncluded: number;
+  currentWeekGamesScheduled: number;
+  currentSeasonGamesIncluded: number;
+  currentSeasonGamesScheduledThroughWeek: number;
   provider: { name: 'nflverse'; license: string; sourceUrls: string[] };
   files: Record<'players' | 'playerGames' | 'teamGames' | 'defenseGames', { path: string; records: number; sha256: string }>;
   definitions: { offensivePossessions: string; offensivePlays: string; ecr: string; opponentPoints: string; opponentYards: string; nullSemantics: string };

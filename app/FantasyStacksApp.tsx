@@ -725,6 +725,25 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
     setPinned(next);
     if (!next.length) setCompareMode(false);
   };
+  const toggleComparison = () => {
+    if (compareMode) {
+      setCompareMode(false);
+      return;
+    }
+
+    // Comparison is a clean destination: discovery filters must not hide
+    // players that were already added to the comparison set.
+    setTeam('ALL');
+    setMinGames(1);
+    setMinTargets(0);
+    setMinEcr(1);
+    setMaxEcr(ecrUnrankedSentinel);
+    setPlayerSearch('');
+    setRelatedSearch(false);
+    setFiltersOpen(false);
+    setCompareMode(true);
+    setShown(Math.max(density * 3, pinned.length));
+  };
   const hidePlayer = (profile: Profile) => {
     setHidden((current) => current.includes(profile.playerId) ? current : [...current, profile.playerId]);
     const nextPinned = pinned.filter((playerId) => playerId !== profile.playerId);
@@ -746,7 +765,13 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
     <main>
       <nav className="topbar">
         <a className="brand" href="#top" aria-label="FantasyStacks home"><BrandMark /><span>FANTASY<span>STACKS</span></span></a>
-        <div className="season-label">{periodLabel(windowKey, dataset.manifest.season, dataset.manifest.currentSeasonThroughWeek)}</div>
+        <div className="season-label">{periodLabel(
+          windowKey,
+          dataset.manifest.season,
+          dataset.manifest.currentSeasonThroughWeek,
+          dataset.manifest.currentWeekGamesIncluded,
+          dataset.manifest.currentWeekGamesScheduled,
+        )}</div>
         <div className="topbar-actions">
           <button className="theme-button" type="button" aria-pressed={themeMode === 'dark'} onClick={toggleTheme}>
             {themeMode === 'dark' ? 'Light mode' : 'Dark mode'}
@@ -951,7 +976,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
           <div><span>COMPARISON SET</span><strong>{pinned.length} selected</strong></div>
           <div className="compare-names">{pinned.map((id) => dataset.players.find((player) => player.playerId === id)?.name).filter(Boolean).map((name) => <span key={name}>{name}</span>)}</div>
           <div className="compare-actions">
-            <button className="compare-button" onClick={() => { setCompareMode((current) => !current); setShown(Math.max(density * 3, pinned.length)); }}>
+            <button className="compare-button" onClick={toggleComparison}>
               {compareMode ? 'Show all stacks' : `Compare ${pinned.length}`}
             </button>
             <button onClick={() => { setPinned([]); setCompareMode(false); }}>Clear</button>
