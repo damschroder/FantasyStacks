@@ -96,6 +96,12 @@ def validate(schema_name: str, payload: dict) -> None:
 
 
 def main() -> None:
+    existing_manifest_path = OUT_DIR / "manifest.json"
+    existing_manifest = (
+        json.loads(existing_manifest_path.read_text(encoding="utf-8"))
+        if existing_manifest_path.exists()
+        else None
+    )
     paths = {name: download(name, url) for name, url in URLS.items()}
     csv_paths = {name: download(name, url, ".csv") for name, url in CSV_URLS.items()}
 
@@ -341,16 +347,28 @@ def main() -> None:
         "playerGames": write_json("player-games.json", player_games_payload),
         "teamGames": write_json("team-games.json", team_games_payload),
     }
-    manifest = {
-        "schemaVersion": SCHEMA_VERSION,
-        "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "season": SEASON,
-        "seasons": SEASONS,
+    coverage = {
         "currentSeasonThroughWeek": current_season_through_week,
         "currentWeekGamesIncluded": current_week_games_included,
         "currentWeekGamesScheduled": current_week_games_scheduled,
         "currentSeasonGamesIncluded": current_season_games_included,
         "currentSeasonGamesScheduledThroughWeek": current_season_games_scheduled_through_week,
+    }
+    snapshot_changed = existing_manifest is None or any(
+        existing_manifest.get("files", {}).get(name) != descriptor
+        for name, descriptor in files.items()
+    ) or any(existing_manifest.get(name) != value for name, value in coverage.items())
+    generated_at = (
+        datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        if snapshot_changed
+        else existing_manifest["generatedAt"]
+    )
+    manifest = {
+        "schemaVersion": SCHEMA_VERSION,
+        "generatedAt": generated_at,
+        "season": SEASON,
+        "seasons": SEASONS,
+        **coverage,
         "provider": {
             "name": "nflverse",
             "license": "CC BY 4.0; underlying NFL data remains subject to its owners' terms",
