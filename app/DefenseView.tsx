@@ -24,11 +24,12 @@ export const DEFENSE_SORT_OPTIONS: Array<{ key: DefenseSort; label: string }> = 
 
 const teamDefenseName = (team: string) => `${team} Def`;
 
-function DefenseCard({ profile, rank, volumeMode, geometry }: {
+function DefenseCard({ profile, rank, volumeMode, geometry, onSelectTeam }: {
   profile: DefenseProfile;
   rank: number;
   volumeMode: VolumeMode;
   geometry: GeometryMode;
+  onSelectTeam: (team: string) => void;
 }) {
   const stackRef = useRef<HTMLDivElement>(null);
   const perGame = volumeMode === 'perGame';
@@ -88,7 +89,11 @@ function DefenseCard({ profile, rank, volumeMode, geometry }: {
         <div className="player-details">
           <p className="player-meta">
             <span className="team-identity">
-              {logo && <Image className="team-logo" src={logo} alt="" width={28} height={28} loading="lazy" unoptimized />}
+              {logo && (
+                <button className="team-logo-button" type="button" onClick={() => onSelectTeam(profile.team)} aria-label={`Show all ${profile.team} positions`} title={`Show all ${profile.team} positions`}>
+                  <Image className="team-logo" src={logo} alt="" width={28} height={28} loading="lazy" unoptimized />
+                </button>
+              )}
               <strong>{profile.team}</strong>
             </span>
             <span aria-hidden="true">·</span><span>DEF</span><span aria-hidden="true">·</span><span>{profile.games} {profile.games === 1 ? 'GAME' : 'GAMES'}</span>
@@ -128,13 +133,14 @@ function DefenseCard({ profile, rank, volumeMode, geometry }: {
   );
 }
 
-export default function DefenseView({ profiles, shown, density, volumeMode, geometry, colorMode, onShowMore }: {
+export default function DefenseView({ profiles, shown, density, volumeMode, geometry, colorMode, onSelectTeam, onShowMore }: {
   profiles: DefenseProfile[];
   shown: number;
   density: number;
   volumeMode: VolumeMode;
   geometry: GeometryMode;
   colorMode: ColorMode;
+  onSelectTeam: (team: string) => void;
   onShowMore: () => void;
 }) {
   const visible = profiles.slice(0, shown);
@@ -143,7 +149,7 @@ export default function DefenseView({ profiles, shown, density, volumeMode, geom
     <>
       {visible.length > 0 ? (
         <section className="player-grid defense-grid" aria-label="Defense stacks" data-density={density} data-geometry={geometry} data-color={colorMode} style={{ '--density': density } as React.CSSProperties}>
-          {visible.map((profile, index) => <DefenseCard key={profile.team} profile={profile} rank={index + 1} volumeMode={volumeMode} geometry={geometry} />)}
+          {visible.map((profile, index) => <DefenseCard key={profile.team} profile={profile} rank={index + 1} volumeMode={volumeMode} geometry={geometry} onSelectTeam={onSelectTeam} />)}
         </section>
       ) : (
         <section className="empty-state"><strong>No qualified defenses.</strong><p>Try a lower minimum games setting or another team.</p></section>
