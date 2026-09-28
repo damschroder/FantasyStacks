@@ -363,6 +363,7 @@ function PlayerStack({
   volumeMode,
   geometryMode,
   onHide,
+  onSelectTeam,
   onTogglePin,
 }: {
   profile: Profile;
@@ -372,6 +373,7 @@ function PlayerStack({
   volumeMode: VolumeMode;
   geometryMode: GeometryMode;
   onHide: () => void;
+  onSelectTeam: () => void;
   onTogglePin: () => void;
 }) {
   const perGame = volumeMode === 'perGame';
@@ -471,7 +473,11 @@ function PlayerStack({
         <div className="player-details">
           <p className="player-meta">
             <span className="team-identity">
-              {logo && <Image className="team-logo" src={logo} alt="" width={28} height={28} loading="lazy" unoptimized />}
+              {logo && (
+                <button className="team-logo-button" type="button" onClick={onSelectTeam} aria-label={`Show all ${profile.team} positions`} title={`Show all ${profile.team} positions`}>
+                  <Image className="team-logo" src={logo} alt="" width={28} height={28} loading="lazy" unoptimized />
+                </button>
+              )}
               <strong>{profile.team}</strong>
             </span>
             <span aria-hidden="true">·</span>
@@ -744,6 +750,23 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
     setCompareMode(true);
     setShown(Math.max(density * 3, pinned.length));
   };
+  const showAllTeamPositions = (teamCode: string) => {
+    setPosition('ALL');
+    setTeam(teamCode);
+    setMinGames(1);
+    setMinTargets(0);
+    setMinEcr(1);
+    setMaxEcr(ecrUnrankedSentinel);
+    setHidden([]);
+    setPlayerSearch('');
+    setRelatedSearch(false);
+    setPinned([]);
+    setCompareMode(false);
+    setFiltersOpen(false);
+    setSortKey('ppr');
+    setSortDirection('desc');
+    setShown(dataset.players.length);
+  };
   const hidePlayer = (profile: Profile) => {
     setHidden((current) => current.includes(profile.playerId) ? current : [...current, profile.playerId]);
     const nextPinned = pinned.filter((playerId) => playerId !== profile.playerId);
@@ -765,7 +788,13 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
     <main>
       <nav className="topbar">
         <a className="brand" href="#top" aria-label="FantasyStacks home"><BrandMark /><span>FANTASY<span>STACKS</span></span></a>
-        <div className="season-label">{periodLabel(windowKey, dataset.manifest.season, dataset.manifest.currentSeasonThroughWeek)}</div>
+        <div className="season-label">{periodLabel(
+          windowKey,
+          dataset.manifest.season,
+          dataset.manifest.currentSeasonThroughWeek,
+          dataset.manifest.currentWeekGamesIncluded,
+          dataset.manifest.currentWeekGamesScheduled,
+        )}</div>
         <div className="topbar-actions">
           <button className="theme-button" type="button" aria-pressed={themeMode === 'dark'} onClick={toggleTheme}>
             {themeMode === 'dark' ? 'Light mode' : 'Dark mode'}
@@ -986,6 +1015,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
           volumeMode={volumeMode}
           geometry={geometryMode}
           colorMode={colorMode}
+          onSelectTeam={showAllTeamPositions}
           onShowMore={() => setShown((current) => current + density * 3)}
         />
       ) : displayProfiles.length ? (
@@ -1000,7 +1030,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
             style={{ '--density': displayDensity, '--related-start': 4 - relatedResult.betterCount } as React.CSSProperties}
           >
             {visibleProfiles.map((profile) => (
-              <PlayerStack key={profile.playerId} profile={profile} rank={rankedProfiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} relatedAnchor={relatedActive && !compareMode && profile.playerId === anchorProfile?.playerId} volumeMode={volumeMode} geometryMode={geometryMode} onHide={() => hidePlayer(profile)} onTogglePin={() => togglePin(profile.playerId)} />
+              <PlayerStack key={profile.playerId} profile={profile} rank={rankedProfiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} relatedAnchor={relatedActive && !compareMode && profile.playerId === anchorProfile?.playerId} volumeMode={volumeMode} geometryMode={geometryMode} onHide={() => hidePlayer(profile)} onSelectTeam={() => showAllTeamPositions(profile.team)} onTogglePin={() => togglePin(profile.playerId)} />
             ))}
           </section>
           {!compareMode && !relatedActive && shown < displayProfiles.length && <button className="load-more" onClick={() => setShown((current) => current + density * 3)}>Show 3 more rows <span>↓</span></button>}

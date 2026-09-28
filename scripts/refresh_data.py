@@ -30,6 +30,7 @@ for season in SEASONS:
         f"stats_{season}": f"https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{season}.parquet",
         f"snaps_{season}": f"https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_{season}.parquet",
         f"pbp_{season}": f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{season}.parquet",
+        f"team_stats_{season}": f"https://github.com/nflverse/nflverse-data/releases/download/stats_team/stats_team_week_{season}.parquet",
     })
 CSV_URLS = {
     "ecr": "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_fpecr_latest.csv",
@@ -95,6 +96,12 @@ def validate(schema_name: str, payload: dict) -> None:
 
 
 def main() -> None:
+    existing_manifest_path = OUT_DIR / "manifest.json"
+    existing_manifest = (
+        json.loads(existing_manifest_path.read_text(encoding="utf-8"))
+        if existing_manifest_path.exists()
+        else None
+    )
     paths = {name: download(name, url) for name, url in URLS.items()}
     csv_paths = {name: download(name, url, ".csv") for name, url in CSV_URLS.items()}
 
@@ -104,6 +111,10 @@ def main() -> None:
     schedules = pd.read_parquet(paths["schedules"])
     rankings = pd.read_csv(csv_paths["ecr"])
     fantasy_ids = pd.read_csv(csv_paths["playerids"], low_memory=False)
+    team_stats = pd.concat(
+        [pd.read_parquet(paths[f"team_stats_{season}"]) for season in SEASONS],
+        ignore_index=True,
+    )
     pbp = pd.concat([
         pq.read_table(
             paths[f"pbp_{season}"],
@@ -117,26 +128,60 @@ def main() -> None:
         & (schedules["game_type"] == "REG")
     ].copy()
     current_schedule["complete"] = current_schedule[["away_score", "home_score"]].notna().all(axis=1)
-    week_completion = current_schedule.groupby("week")["complete"].all().sort_index()
-    completed_weeks = []
-    for week, complete in week_completion.items():
-        if not complete:
-            break
-        completed_weeks.append(int(week))
-    if not completed_weeks:
-        raise ValueError(f"No completed {SEASON} regular-season week is available")
-    current_season_through_week = max(completed_weeks)
+    completed_schedule = current_schedule[current_schedule["complete"]].copy()
+    if completed_schedule.empty:
+        raise ValueError(f"No completed {SEASON} regular-season game is available")
+
+    # Publish a game as soon as every feed needed by the offense and defense
+    # views has it. Do not hold back Sunday games until the final Monday game.
+    player_stat_game_ids = set(stats.loc[stats["season"] == SEASON, "game_id"].astype(str))
+    snap_team_keys = {
+        (str(row.game_id), str(row.team))
+        for row in snaps[(snaps["season"] == SEASON) & (snaps["game_type"] == "REG")].itertuples(index=False)
+    }
+    pbp_team_keys = {
+        (str(row.game_id), str(row.posteam))
+        for row in pbp[(pbp["season"] == SEASON) & (pbp["season_type"] == "REG")]
+        .dropna(subset=["posteam"])
+        .itertuples(index=False)
+    }
+    team_stat_keys = {
+        (str(row.game_id), str(row.team))
+        for row in team_stats[(team_stats["season"] == SEASON) & (team_stats["season_type"] == "REG")].itertuples(index=False)
+    }
+    ready_game_ids = set()
+    for game in completed_schedule.itertuples(index=False):
+        game_id = str(game.game_id)
+        expected_teams = {(game_id, str(game.away_team)), (game_id, str(game.home_team))}
+        if (
+            game_id in player_stat_game_ids
+            and expected_teams.issubset(snap_team_keys)
+            and expected_teams.issubset(pbp_team_keys)
+            and expected_teams.issubset(team_stat_keys)
+        ):
+            ready_game_ids.add(game_id)
+    if not ready_game_ids:
+        raise ValueError(f"No completed {SEASON} regular-season game is available in every required feed")
+
+    included_schedule = completed_schedule[completed_schedule["game_id"].astype(str).isin(ready_game_ids)].copy()
+    current_season_through_week = int(included_schedule["week"].max())
+    current_week_games_included = int((included_schedule["week"] == current_season_through_week).sum())
+    current_week_games_scheduled = int((current_schedule["week"] == current_season_through_week).sum())
+    current_season_games_included = len(included_schedule)
+    current_season_games_scheduled_through_week = int(
+        (current_schedule["week"] <= current_season_through_week).sum()
+    )
 
     stats = stats[
         (stats["season"].isin(SEASONS))
-        & ((stats["season"] != SEASON) | (stats["week"] <= current_season_through_week))
+        & ((stats["season"] != SEASON) | stats["game_id"].astype(str).isin(ready_game_ids))
         & (stats["season_type"] == "REG")
         & (stats["position"].isin(["WR", "TE", "RB", "QB"]))
     ].copy()
     snaps = snaps[(snaps["season"].isin(SEASONS)) & (snaps["game_type"] == "REG")].copy()
     pbp = pbp[(pbp["season"].isin(SEASONS)) & (pbp["season_type"] == "REG")].copy()
-    snaps = snaps[(snaps["season"] != SEASON) | (snaps["week"] <= current_season_through_week)].copy()
-    pbp = pbp[(pbp["season"] != SEASON) | (pbp["week"] <= current_season_through_week)].copy()
+    snaps = snaps[(snaps["season"] != SEASON) | snaps["game_id"].astype(str).isin(ready_game_ids)].copy()
+    pbp = pbp[(pbp["season"] != SEASON) | pbp["game_id"].astype(str).isin(ready_game_ids)].copy()
 
     rankings = rankings[
         (rankings["page_type"] == "redraft-overall")
@@ -192,7 +237,7 @@ def main() -> None:
     team_games = game_context.merge(possessions, on=["game_id", "team"], how="left")
     team_games = team_games.merge(team_plays, on=["game_id", "team"], how="left")
 
-    expected_schedule = current_schedule[current_schedule["week"] <= current_season_through_week]
+    expected_schedule = included_schedule
     expected_team_games = {
         (str(row.game_id), str(team))
         for row in expected_schedule.itertuples(index=False)
@@ -302,12 +347,28 @@ def main() -> None:
         "playerGames": write_json("player-games.json", player_games_payload),
         "teamGames": write_json("team-games.json", team_games_payload),
     }
+    coverage = {
+        "currentSeasonThroughWeek": current_season_through_week,
+        "currentWeekGamesIncluded": current_week_games_included,
+        "currentWeekGamesScheduled": current_week_games_scheduled,
+        "currentSeasonGamesIncluded": current_season_games_included,
+        "currentSeasonGamesScheduledThroughWeek": current_season_games_scheduled_through_week,
+    }
+    snapshot_changed = existing_manifest is None or any(
+        existing_manifest.get("files", {}).get(name) != descriptor
+        for name, descriptor in files.items()
+    ) or any(existing_manifest.get(name) != value for name, value in coverage.items())
+    generated_at = (
+        datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        if snapshot_changed
+        else existing_manifest["generatedAt"]
+    )
     manifest = {
         "schemaVersion": SCHEMA_VERSION,
-        "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "generatedAt": generated_at,
         "season": SEASON,
         "seasons": SEASONS,
-        "currentSeasonThroughWeek": current_season_through_week,
+        **coverage,
         "provider": {
             "name": "nflverse",
             "license": "CC BY 4.0; underlying NFL data remains subject to its owners' terms",
@@ -326,7 +387,9 @@ def main() -> None:
     print(
         f"Generated {len(player_records)} players, {len(player_game_records)} player-games, "
         f"and {len(team_game_records)} team-games for {SEASONS}; "
-        f"{SEASON} is complete through Week {current_season_through_week}."
+        f"{SEASON} includes {current_season_games_included}/{current_season_games_scheduled_through_week} games "
+        f"through Week {current_season_through_week} "
+        f"({current_week_games_included}/{current_week_games_scheduled} in the latest week)."
     )
 
 

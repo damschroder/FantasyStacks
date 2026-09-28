@@ -92,12 +92,14 @@ def main() -> None:
     schema = json.loads((ROOT / "schema" / "defense-games.schema.json").read_text(encoding="utf-8"))
     Draft202012Validator(schema).validate(payload)
     output = DATA / "defense-games.json"
+    previous_hash = hashlib.sha256(output.read_bytes()).hexdigest() if output.exists() else None
     encoded = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     output.write_bytes(encoded)
+    current_hash = hashlib.sha256(encoded).hexdigest()
     manifest["files"]["defenseGames"] = {
         "path": "/data/v1/defense-games.json",
         "records": len(records),
-        "sha256": hashlib.sha256(encoded).hexdigest(),
+        "sha256": current_hash,
     }
     manifest["definitions"]["opponentPoints"] = (
         "Opponent final scoreboard points; includes any points scored by the opponent's defense or special teams."
@@ -108,7 +110,8 @@ def main() -> None:
     manifest["provider"]["sourceUrls"] = list(dict.fromkeys([
         *manifest["provider"]["sourceUrls"], *urls, SCHEDULES_URL,
     ]))
-    manifest["generatedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    if previous_hash != current_hash:
+        manifest["generatedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"Generated {len(records)} defense-games across {len(seasons)} seasons")
 

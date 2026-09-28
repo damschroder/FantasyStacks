@@ -29,6 +29,16 @@ assert manifest["seasons"] == [2025, 2026]
 current_weeks = set(range(1, manifest["currentSeasonThroughWeek"] + 1))
 assert {game["week"] for game in player_games if game["season"] == manifest["season"]} == current_weeks
 assert {game["week"] for game in team_games if game["season"] == manifest["season"]} == current_weeks
+current_game_ids = {game["gameId"] for game in team_games if game["season"] == manifest["season"]}
+latest_week_game_ids = {
+    game["gameId"]
+    for game in team_games
+    if game["season"] == manifest["season"] and game["week"] == manifest["currentSeasonThroughWeek"]
+}
+assert len(current_game_ids) == manifest["currentSeasonGamesIncluded"]
+assert len(latest_week_game_ids) == manifest["currentWeekGamesIncluded"]
+assert manifest["currentWeekGamesIncluded"] <= manifest["currentWeekGamesScheduled"]
+assert manifest["currentSeasonGamesIncluded"] <= manifest["currentSeasonGamesScheduledThroughWeek"]
 assert {game["season"] for game in player_games} == set(manifest["seasons"])
 assert all(game["playerId"] in player_ids for game in player_games)
 assert all((game["gameId"], game["team"]) in team_context for game in player_games)
