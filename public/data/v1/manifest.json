@@ -1,15 +1,15 @@
 {
   "schemaVersion": "1.4.0",
-  "generatedAt": "2026-09-28T19:20:56.311543Z",
+  "generatedAt": "2026-09-29T12:58:57.255554Z",
   "season": 2026,
   "seasons": [
     2025,
     2026
   ],
   "currentSeasonThroughWeek": 3,
-  "currentWeekGamesIncluded": 15,
+  "currentWeekGamesIncluded": 16,
   "currentWeekGamesScheduled": 16,
-  "currentSeasonGamesIncluded": 47,
+  "currentSeasonGamesIncluded": 48,
   "currentSeasonGamesScheduledThroughWeek": 48,
   "provider": {
     "name": "nflverse",
@@ -32,23 +32,23 @@
   "files": {
     "players": {
       "path": "/data/v1/players.json",
-      "records": 668,
-      "sha256": "46d4f99bf6c96f8e41575d953957afd7376551bb522e9b833c4a606034ec8967"
+      "records": 669,
+      "sha256": "e039e0361992015c90bc269d37c1d21309b739415db948ba41ad9e89d658ebde"
     },
     "playerGames": {
       "path": "/data/v1/player-games.json",
-      "records": 6759,
-      "sha256": "c06f660bc4b7d7e4e7e4ef2ad51cac9398bf73a2cd9826bf373d6a73f05ebcc2"
+      "records": 6781,
+      "sha256": "1f23ccec84054b65526c3e8c19baf112278f5fa7198e7aa3ef1e7fe45d74b9d7"
     },
     "teamGames": {
       "path": "/data/v1/team-games.json",
-      "records": 638,
-      "sha256": "a2ea457cc94f12d467a92afe78d3f475aedaf0c2c942b381bf1cf6e3e90a8971"
+      "records": 640,
+      "sha256": "eb707eb592bf43cf457f51d081d01016ac7b0746da10273adde3758c73b77c62"
     },
     "defenseGames": {
       "path": "/data/v1/defense-games.json",
-      "records": 638,
-      "sha256": "31140699156e553255ffe197f3516120877e4241d158c2da10b4144e1040d330"
+      "records": 640,
+      "sha256": "21f60c83b43e6fbd8240877d6afc05370e6e0fc5bcdb3c5aa066f2980abdad45"
     }
   },
   "definitions": {
