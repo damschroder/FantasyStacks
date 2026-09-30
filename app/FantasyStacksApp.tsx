@@ -706,6 +706,16 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       ? Math.max(1, Math.min(density, displayProfiles.length))
       : density;
   const sortGroups = position === 'ALL' ? ALL_SORT_GROUPS : position === 'QB' ? QB_SORT_GROUPS : position === 'FLEX' ? FLEX_SORT_GROUPS : position === 'RB' ? RB_SORT_GROUPS : RECEIVER_SORT_GROUPS;
+  const hasClearableFilters = Boolean(
+    normalizedSearch
+    || relatedSearch
+    || team !== 'ALL'
+    || minGames !== 1
+    || minTargets !== 2
+    || minEcr !== 1
+    || maxEcr !== ecrUnrankedSentinel
+    || hidden.length,
+  );
   const usageOptions = position === 'QB' ? [0, 5, 10, 15, 20, 25, 30, 35, 40, 45] : position === 'ALL' ? [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30] : position === 'RB' || position === 'FLEX' ? [0, 2, 4, 6, 8, 10, 12, 15, 20] : [0, 1, 2, 3, 4, 5, 6];
 
   const changeWindow = (next: WindowKey) => {
@@ -721,6 +731,18 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       setSortKey('ppr');
     }
     setPinned([]);
+    setCompareMode(false);
+    setShown(density * 3);
+  };
+  const clearSearchAndFilters = () => {
+    setTeam('ALL');
+    setMinGames(1);
+    setMinTargets(2);
+    setMinEcr(1);
+    setMaxEcr(ecrUnrankedSentinel);
+    setHidden([]);
+    setPlayerSearch('');
+    setRelatedSearch(false);
     setCompareMode(false);
     setShown(density * 3);
   };
@@ -966,6 +988,16 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               </button>
             </div>
           </div>
+          <button
+            className={`clear-filters${hasClearableFilters ? ' available' : ''}`}
+            type="button"
+            disabled={!hasClearableFilters}
+            aria-label={hasClearableFilters ? 'Clear player search and filters' : 'Player search and filters are clear'}
+            title={hasClearableFilters ? 'Clear player search and filters' : 'Nothing to clear'}
+            onClick={clearSearchAndFilters}
+          >
+            <span aria-hidden="true" /> Clear
+          </button>
           <button className={`filter-toggle${filtersOpen ? ' active' : ''}`} onClick={() => setFiltersOpen(!filtersOpen)}>
             Filters <span>{filtersOpen ? '−' : '+'}</span>
           </button>
@@ -976,7 +1008,6 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         <section className="filter-panel" aria-label="Minimum qualification filters">
           <label>MIN. GAMES<select value={minGames} onChange={(event) => setMinGames(Number(event.target.value))}>{[1, 2, 3, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <label>MIN. {position === 'ALL' ? 'USAGE' : position === 'QB' ? 'PASSES' : position === 'RB' || position === 'FLEX' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <button onClick={() => { setTeam('ALL'); setMinGames(1); setMinTargets(2); setHidden([]); setPlayerSearch(''); setRelatedSearch(false); }}>Reset filters</button>
         </section>
       )}
 
