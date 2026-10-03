@@ -228,12 +228,14 @@ function PlayerSearchControl({
   candidates,
   relatedSearch,
   onChange,
+  onSelect,
   onToggleRelated,
 }: {
   value: string;
   candidates: Profile[];
   relatedSearch: boolean;
   onChange: (value: string) => void;
+  onSelect: (profile: Profile) => void;
   onToggleRelated: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -269,6 +271,7 @@ function PlayerSearchControl({
 
   const selectPlayer = (profile: Profile) => {
     onChange(profile.name);
+    onSelect(profile);
     setOpen(false);
     setActiveIndex(0);
     inputRef.current?.focus();
@@ -547,6 +550,7 @@ function PlayerStack({
 }
 
 function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
+  const posthog = usePostHog();
   const rankedEcrCeiling = Math.ceil(Math.max(1, ...dataset.players.map((player) => player.ecr ?? 0)) / 25) * 25;
   const ecrUnrankedSentinel = rankedEcrCeiling + 1;
   const [windowKey, setWindowKey] = useState<WindowKey>('thisYear');
@@ -706,7 +710,67 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       ? Math.max(1, Math.min(density, displayProfiles.length))
       : density;
   const sortGroups = position === 'ALL' ? ALL_SORT_GROUPS : position === 'QB' ? QB_SORT_GROUPS : position === 'FLEX' ? FLEX_SORT_GROUPS : position === 'RB' ? RB_SORT_GROUPS : RECEIVER_SORT_GROUPS;
+  const hasClearableFilters = Boolean(
+    normalizedSearch
+    || relatedSearch
+    || team !== 'ALL'
+    || minGames !== 1
+    || minTargets !== 2
+    || minEcr !== 1
+    || maxEcr !== ecrUnrankedSentinel
+    || hidden.length,
+  );
   const usageOptions = position === 'QB' ? [0, 5, 10, 15, 20, 25, 30, 35, 40, 45] : position === 'ALL' ? [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30] : position === 'RB' || position === 'FLEX' ? [0, 2, 4, 6, 8, 10, 12, 15, 20] : [0, 1, 2, 3, 4, 5, 6];
+  const analyticsContext = useMemo(() => ({
+    window: windowKey,
+    normalize: volumeMode,
+    ppr: scoringMode,
+    geometry: geometryMode,
+    color: colorMode,
+    position,
+    team,
+    minimum_games: minGames,
+    minimum_usage: minTargets,
+    ecr_minimum: minEcr,
+    ecr_maximum: maxEcr === ecrUnrankedSentinel ? 'NR' : maxEcr,
+    density,
+    sort: isDefense ? defenseSort : sortKey,
+    sort_direction: sortDirection,
+    view_mode: isDefense ? 'defense' : compareMode ? 'comparison' : relatedActive ? 'related' : normalizedSearch ? 'search' : 'players',
+    qualified_result_count: isDefense ? rankedDefenses.length : availableProfiles.length,
+    displayed_result_count: isDefense ? Math.min(shown, rankedDefenses.length) : visibleProfiles.length,
+    comparison_active: compareMode,
+    comparison_size: pinned.length,
+    related_search_active: relatedActive,
+    hidden_player_count: hidden.length,
+  }), [
+    windowKey, volumeMode, scoringMode, geometryMode, colorMode, position, team,
+    minGames, minTargets, minEcr, maxEcr, ecrUnrankedSentinel, density,
+    isDefense, defenseSort, sortKey, sortDirection, compareMode, relatedActive,
+    normalizedSearch, rankedDefenses.length, availableProfiles.length, shown,
+    visibleProfiles.length, pinned.length, hidden.length,
+  ]);
+  const lastCapturedView = useRef<typeof analyticsContext | null>(null);
+
+  useEffect(() => {
+    const previous = lastCapturedView.current;
+    const timer = window.setTimeout(() => {
+      const changedFields = previous
+        ? Object.keys(analyticsContext).filter((key) => previous[key as keyof typeof previous] !== analyticsContext[key as keyof typeof analyticsContext])
+        : [];
+      posthog.capture('fantasystacks_analysis_viewed', {
+        ...analyticsContext,
+        view_change: previous ? 'interaction' : 'initial_load',
+        changed_fields: changedFields,
+      });
+      lastCapturedView.current = analyticsContext;
+    }, previous ? 650 : 0);
+    return () => window.clearTimeout(timer);
+  }, [analyticsContext, posthog]);
+
+  const captureAnalytics = (event: string, properties: Record<string, unknown> = {}) => {
+    posthog.capture(event, { ...analyticsContext, ...properties });
+  };
 
   const changeWindow = (next: WindowKey) => {
     setWindowKey(next);
@@ -721,6 +785,18 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       setSortKey('ppr');
     }
     setPinned([]);
+    setCompareMode(false);
+    setShown(density * 3);
+  };
+  const clearSearchAndFilters = () => {
+    setTeam('ALL');
+    setMinGames(1);
+    setMinTargets(2);
+    setMinEcr(1);
+    setMaxEcr(ecrUnrankedSentinel);
+    setHidden([]);
+    setPlayerSearch('');
+    setRelatedSearch(false);
     setCompareMode(false);
     setShown(density * 3);
   };
@@ -749,8 +825,19 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
     setFiltersOpen(false);
     setCompareMode(true);
     setShown(Math.max(density * 3, pinned.length));
+    captureAnalytics('fantasystacks_comparison_opened', {
+      selected_player_count: pinned.length,
+      selected_player_ids: pinned,
+      selected_positions: pinned.map((playerId) => dataset.players.find((player) => player.playerId === playerId)?.position).filter(Boolean),
+      selected_teams: pinned.map((playerId) => dataset.players.find((player) => player.playerId === playerId)?.latestTeam).filter(Boolean),
+    });
   };
   const showAllTeamPositions = (teamCode: string) => {
+    captureAnalytics('fantasystacks_team_view_opened', {
+      selected_team: teamCode,
+      source: 'team_logo',
+      previous_position: position,
+    });
     setPosition('ALL');
     setTeam(teamCode);
     setMinGames(1);
@@ -776,6 +863,43 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
       setPlayerSearch('');
       setRelatedSearch(false);
     }
+  };
+  const selectTeamFromPicker = (teamCode: string) => {
+    if (teamCode !== team && teamCode !== 'ALL') {
+      captureAnalytics('fantasystacks_team_view_opened', {
+        selected_team: teamCode,
+        source: 'team_picker',
+        previous_position: position,
+      });
+    }
+    setTeam(teamCode);
+    setShown(density * 3);
+  };
+  const toggleRelatedSearch = () => {
+    const nextRelatedSearch = !relatedSearch;
+    setRelatedSearch(nextRelatedSearch);
+    setCompareMode(false);
+    if (nextRelatedSearch && anchorProfile) {
+      captureAnalytics('fantasystacks_related_players_viewed', {
+        anchor_player_id: anchorProfile.playerId,
+        anchor_position: anchorProfile.position,
+        anchor_team: anchorProfile.team,
+        related_result_count: relatedResult.profiles.length,
+        better_result_count: relatedResult.betterCount,
+        worse_result_count: relatedResult.worseCount,
+      });
+    }
+  };
+  const expandResults = () => {
+    const availableCount = isDefense ? rankedDefenses.length : displayProfiles.length;
+    const visibleBefore = Math.min(shown, availableCount);
+    const visibleAfter = Math.min(shown + density * 3, availableCount);
+    captureAnalytics('fantasystacks_result_set_expanded', {
+      visible_before: visibleBefore,
+      visible_after: visibleAfter,
+      available_result_count: availableCount,
+    });
+    setShown(visibleAfter);
   };
   const toggleTheme = () => {
     const nextTheme: ThemeMode = themeMode === 'light' ? 'dark' : 'light';
@@ -898,7 +1022,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         <div className="results-tools">
           <div className="team-label">
             <span>TEAM</span>
-            <TeamPicker team={team} teams={teams} onChange={setTeam} />
+            <TeamPicker team={team} teams={teams} onChange={selectTeamFromPicker} />
           </div>
           <div className="position-label">
             <span>POSITION</span>
@@ -909,7 +1033,13 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
             candidates={availableProfiles}
             relatedSearch={relatedSearch}
             onChange={(nextValue) => { setPlayerSearch(nextValue); setShown(density * 3); }}
-            onToggleRelated={() => { setRelatedSearch((current) => !current); setCompareMode(false); }}
+            onSelect={(profile) => captureAnalytics('fantasystacks_player_search_completed', {
+              selected_player_id: profile.playerId,
+              selected_position: profile.position,
+              selected_team: profile.team,
+              selected_ecr: profile.ecr ?? 'NR',
+            })}
+            onToggleRelated={toggleRelatedSearch}
           />
           <label className="ecr-label">
             <span>FP ECR RANGE <output>{integer.format(minEcr)}–{maxEcr === ecrUnrankedSentinel ? 'NR' : integer.format(maxEcr)}</output></span>
@@ -966,6 +1096,16 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               </button>
             </div>
           </div>
+          <button
+            className={`clear-filters${hasClearableFilters ? ' available' : ''}`}
+            type="button"
+            disabled={!hasClearableFilters}
+            aria-label={hasClearableFilters ? 'Clear player search and filters' : 'Player search and filters are clear'}
+            title={hasClearableFilters ? 'Clear player search and filters' : 'Nothing to clear'}
+            onClick={clearSearchAndFilters}
+          >
+            <span aria-hidden="true" /> Clear
+          </button>
           <button className={`filter-toggle${filtersOpen ? ' active' : ''}`} onClick={() => setFiltersOpen(!filtersOpen)}>
             Filters <span>{filtersOpen ? '−' : '+'}</span>
           </button>
@@ -976,7 +1116,6 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         <section className="filter-panel" aria-label="Minimum qualification filters">
           <label>MIN. GAMES<select value={minGames} onChange={(event) => setMinGames(Number(event.target.value))}>{[1, 2, 3, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <label>MIN. {position === 'ALL' ? 'USAGE' : position === 'QB' ? 'PASSES' : position === 'RB' || position === 'FLEX' ? 'OPPORTUNITIES' : 'TARGETS'} / GAME<select value={minTargets} onChange={(event) => setMinTargets(Number(event.target.value))}>{usageOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <button onClick={() => { setTeam('ALL'); setMinGames(1); setMinTargets(2); setHidden([]); setPlayerSearch(''); setRelatedSearch(false); }}>Reset filters</button>
         </section>
       )}
 
@@ -1016,7 +1155,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
           geometry={geometryMode}
           colorMode={colorMode}
           onSelectTeam={showAllTeamPositions}
-          onShowMore={() => setShown((current) => current + density * 3)}
+          onShowMore={expandResults}
         />
       ) : displayProfiles.length ? (
         <>
@@ -1033,7 +1172,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
               <PlayerStack key={profile.playerId} profile={profile} rank={rankedProfiles.findIndex((item) => item.playerId === profile.playerId) + 1} pinned={pinned.includes(profile.playerId)} relatedAnchor={relatedActive && !compareMode && profile.playerId === anchorProfile?.playerId} volumeMode={volumeMode} geometryMode={geometryMode} onHide={() => hidePlayer(profile)} onSelectTeam={() => showAllTeamPositions(profile.team)} onTogglePin={() => togglePin(profile.playerId)} />
             ))}
           </section>
-          {!compareMode && !relatedActive && shown < displayProfiles.length && <button className="load-more" onClick={() => setShown((current) => current + density * 3)}>Show 3 more rows <span>↓</span></button>}
+          {!compareMode && !relatedActive && shown < displayProfiles.length && <button className="load-more" onClick={expandResults}>Show 3 more rows <span>↓</span></button>}
         </>
       ) : (
         <section className="empty-state"><strong>{compareMode ? 'No selected stacks in this view.' : normalizedSearch ? 'No matching players.' : 'No qualified players.'}</strong><p>{compareMode ? 'Show all stacks or loosen the filters to restore the comparison.' : normalizedSearch ? 'Try another player name or loosen the current filters.' : 'Loosen the minimum games or usage filter to widen the field.'}</p></section>
@@ -1045,26 +1184,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
         <p>Width = peer-relative volume. Height = transition efficiency. <a href="https://nflverse.nflverse.com/" target="_blank" rel="noreferrer">Data via nflverse ↗</a></p>
       </footer>
 
-      <FeedbackWidget context={{
-        window: windowKey,
-        normalize: volumeMode,
-        ppr: scoringMode,
-        geometry: geometryMode,
-        color: colorMode,
-        position,
-        team,
-        minimum_games: minGames,
-        minimum_usage: minTargets,
-        ecr_minimum: minEcr,
-        ecr_maximum: maxEcr === ecrUnrankedSentinel ? 'NR' : maxEcr,
-        density,
-        sort: sortKey,
-        sort_direction: sortDirection,
-        visible_player_count: isDefense ? rankedDefenses.length : availableProfiles.length,
-        comparison_active: compareMode,
-        comparison_size: pinned.length,
-        related_search_active: relatedActive,
-      }} />
+      <FeedbackWidget context={analyticsContext} />
 
       {guideOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setGuideOpen(false)}>
@@ -1094,6 +1214,7 @@ function FantasyStacksLoaded({ dataset }: { dataset: Dataset }) {
 }
 
 export default function FantasyStacksApp() {
+  const posthog = usePostHog();
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -1109,10 +1230,13 @@ export default function FantasyStacksApp() {
         setDataset(parseDataset(manifest, players, playerGames, teamGames, defenseGames));
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : 'Unable to load FantasyStacks data');
+        if (!controller.signal.aborted) {
+          posthog.captureException(error, { stage: 'initial_data_load', fantasy_stacks_build: APP_BUILD });
+          setLoadError(error instanceof Error ? error.message : 'Unable to load FantasyStacks data');
+        }
       });
     return () => controller.abort();
-  }, []);
+  }, [posthog]);
 
   if (loadError) {
     return <main className="data-state"><strong>FantasyStacks data could not be loaded.</strong><p>{loadError}</p><button onClick={() => window.location.reload()}>Try again</button></main>;
