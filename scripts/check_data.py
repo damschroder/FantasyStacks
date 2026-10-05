@@ -57,6 +57,24 @@ assert any(game["position"] == "QB" and game["passingAttempts"] > 0 for game in 
 assert all(player["ecr"] is None or player["ecr"] > 0 for player in players)
 assert sum(player["ecr"] is not None for player in players) >= 300
 
+# Business rule: starting from the newest official weekly injury feed, a
+# refresh must attach only current game designations or material practice
+# limitations. Missing status remains null rather than being presented as
+# healthy; a failure means the cards can show stale or misleading availability.
+injured_players = [player for player in players if player.get("injuryStatus") is not None]
+assert all(
+    {"injuryStatus", "injuryStatusSource", "injuryDescription", "injuryWeek"}.issubset(player)
+    for player in players
+), "player records are missing injury status fields"
+assert all(player["injuryStatusSource"] in {"game", "practice"} for player in injured_players)
+assert len({player["injuryWeek"] for player in injured_players}) <= 1, "injury statuses span multiple report weeks"
+assert all(
+    player.get("injuryStatus") is None
+    or player["injuryStatusSource"] == "game"
+    or player["injuryStatus"] in {"Did Not Participate In Practice", "Limited Participation in Practice"}
+    for player in players
+)
+
 defense_context = {(game["gameId"], game["team"]): game for game in defense_games}
 assert len(defense_context) == len(defense_games), "duplicate defense-game keys"
 assert defense_context.keys() == team_context.keys(), "defense games do not match team games"

@@ -32,6 +32,8 @@ Player Search includes a Related mode. It anchors the searched player in the cen
 
 Time-window controls name every available current-season week explicitly and add new week buttons automatically as refreshed data arrives. Full current- and prior-season views remain available. The independent Total / Per game switch controls displayed layer volume, width percentiles, fantasy points, volume sorting, and stack score without changing transition-rate heights. Per-game values use player appearances as their denominator, so games the player missed are excluded.
 
+Player cards show the newest available weekly injury designation beneath the player name. Official game status takes precedence. Before that designation exists, only did-not-participate and limited-practice status is shown; full participation and rest-only practice entries are suppressed. The injury-report week and full source wording remain available in the badge tooltip.
+
 The PPR control switches between Full, Half, and Off. The app retains full-PPR source facts and derives the other modes by applying 0.5 or 0 reception points, so the Fantasy Points layer, sorting, widths, and stack score all update without rewriting the underlying records. Fantasy Points has no transition metric.
 
 ## Run locally
@@ -55,7 +57,7 @@ Local development remains at `http://localhost:3000`; the `/FantasyStacks` base 
 npm run data:refresh
 ```
 
-The refresh script downloads the 2025 and 2026 nflverse player-stat, team-stat, snap-count, play-by-play, schedule, and player-identity Parquet feeds. It includes each current-season game as soon as that game is final and available in every feed required by the offense and defense views, then emits compact canonical JSON under `public/data/v1`.
+The refresh script downloads the 2025 and 2026 nflverse player-stat, team-stat, snap-count, play-by-play, schedule, player-identity, and current-season injury-report Parquet feeds. It includes each current-season game as soon as that game is final and available in every feed required by the offense and defense views, then emits compact canonical JSON under `public/data/v1`.
 
 ## Data contract
 

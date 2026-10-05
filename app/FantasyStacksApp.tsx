@@ -470,6 +470,16 @@ function PlayerStack({
   const color = TEAM_COLORS[profile.team] ?? '#6e777a';
   const logo = TEAM_LOGOS[profile.team];
   const initials = profile.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('');
+  const injuryLabel = profile.injuryStatus === 'Did Not Participate In Practice'
+    ? 'DNP'
+    : profile.injuryStatus === 'Limited Participation in Practice'
+      ? 'LIMITED'
+      : profile.injuryStatus?.toLocaleUpperCase();
+  const injurySeverity = /^(Out|Doubtful|Did Not Participate In Practice)$/i.test(profile.injuryStatus ?? '') ? 'high' : 'watch';
+  const injuryContext = profile.injuryStatusSource === 'game' ? 'game status' : 'practice status';
+  const injuryTitle = profile.injuryStatus
+    ? `Week ${profile.injuryWeek ?? '—'} ${injuryContext}: ${profile.injuryStatus}${profile.injuryDescription ? ` — ${profile.injuryDescription}` : ''}`
+    : undefined;
   return (
     <article className={`player-card${pinned ? ' pinned' : ''}${relatedAnchor ? ' related-anchor' : ''}`} style={{ '--accent': color } as React.CSSProperties}>
       <div className="player-heading">
@@ -504,7 +514,15 @@ function PlayerStack({
                 />
               )}
             </span>
-            <h2 title={profile.name}>{profile.name}</h2>
+            <div className="player-name-copy">
+              <h2 title={profile.name}>{profile.name}</h2>
+              {profile.injuryStatus && (
+                <p className="injury-status" data-severity={injurySeverity} title={injuryTitle} aria-label={injuryTitle}>
+                  <strong>{injuryLabel}</strong>
+                  {profile.injuryDescription && <span>{profile.injuryDescription}</span>}
+                </p>
+              )}
+            </div>
           </div>
           {profile.position === 'RB' && <p className="role-legend"><span className="rush-key">RUSH / TOUCH</span><span className="receive-key">TARGET / RECEIVE</span></p>}
           {profile.position === 'QB' && <p className="role-legend"><span className="sack-key">SACKS</span><span className="interception-key">INTERCEPTIONS</span></p>}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.4.0",
-  "generatedAt": "2026-10-05T14:23:04.149993Z",
+  "generatedAt": "2026-10-05T23:29:01.056099Z",
   "season": 2026,
   "seasons": [
     2025,
@@ -17,6 +17,7 @@
     "sourceUrls": [
       "https://github.com/nflverse/nflverse-data/releases/download/players/players.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/schedules/games.parquet",
+      "https://github.com/nflverse/nflverse-data/releases/download/injuries/injuries_2026.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2025.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2025.parquet",
       "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2025.parquet",
@@ -33,7 +34,7 @@
     "players": {
       "path": "/data/v1/players.json",
       "records": 678,
-      "sha256": "ecd435559ea68d9b3073e24b23a37346590787e89833edc12064cf5f5cf9b419"
+      "sha256": "080d21cf68d702beaafc0cbb4ade4bef0ce1bbe2da69d51e9c248b938d9a4424"
     },
     "playerGames": {
       "path": "/data/v1/player-games.json",
@@ -55,6 +56,7 @@
     "offensivePossessions": "Distinct nflverse play-by-play drive identifiers with a recorded possession team.",
     "offensivePlays": "Median team snap total reconstructed from player offense_snaps / offense_pct, rounded to a whole play.",
     "ecr": "Current FantasyPros redraft-overall expert consensus rank distributed by DynastyProcess through nflverse; null means the player is not currently ranked.",
+    "injuryStatus": "Newest available regular-season nflverse injury-report week. Official game status takes precedence; otherwise only Did Not Participate or Limited Participation practice status is retained.",
     "nullSemantics": "null means unknown or unavailable; 0 means a verified zero",
     "opponentPoints": "Opponent final scoreboard points; includes any points scored by the opponent's defense or special teams.",
     "opponentYards": "Opponent net offensive yards: passing plus rushing yards plus signed sack yards lost."

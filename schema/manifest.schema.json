@@ -44,6 +44,7 @@
         "offensivePossessions": { "type": "string" },
         "offensivePlays": { "type": "string" },
         "ecr": { "type": "string" },
+        "injuryStatus": { "type": "string" },
         "opponentPoints": { "type": "string" },
         "opponentYards": { "type": "string" },
         "nullSemantics": { "const": "null means unknown or unavailable; 0 means a verified zero" }

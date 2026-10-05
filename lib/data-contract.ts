@@ -9,6 +9,10 @@ export interface Player {
   headshotUrl: string | null;
   ecr: number | null;
   ecrUpdatedAt: string | null;
+  injuryStatus?: string | null;
+  injuryStatusSource?: 'game' | 'practice' | null;
+  injuryDescription?: string | null;
+  injuryWeek?: number | null;
   sourceIds: { gsis: string; pfr: string | null };
 }
 
@@ -163,6 +167,10 @@ export interface Profile {
   position: Position;
   team: string;
   ecr: number | null;
+  injuryStatus: string | null;
+  injuryStatusSource: 'game' | 'practice' | null;
+  injuryDescription: string | null;
+  injuryWeek: number | null;
   games: number;
   possessions: number;
   teamPlays: number;
@@ -253,7 +261,8 @@ export function aggregateProfiles(
   const players = new Map(dataset.players.map((player) => [player.playerId, player]));
   const teamGames = new Map(dataset.teamGames.map((game) => [`${game.gameId}:${game.team}`, game]));
   type Accumulator = Pick<Profile,
-    'playerId' | 'name' | 'headshotUrl' | 'position' | 'team' | 'ecr' | 'games' | 'possessions' | 'teamPlays' | 'snaps'
+    'playerId' | 'name' | 'headshotUrl' | 'position' | 'team' | 'ecr' | 'injuryStatus' | 'injuryStatusSource'
+    | 'injuryDescription' | 'injuryWeek' | 'games' | 'possessions' | 'teamPlays' | 'snaps'
     | 'passingAttempts' | 'completions' | 'passingYards' | 'passingTouchdowns' | 'interceptions' | 'sacks'
     | 'carries' | 'targets' | 'receptions' | 'rushingYards' | 'receivingYards'
     | 'rushingTouchdowns' | 'receivingTouchdowns' | 'ppr'>;
@@ -272,6 +281,8 @@ export function aggregateProfiles(
     if (game.offensiveSnaps === null || context?.offensivePlays == null) continue;
     const current = accumulators.get(game.playerId) ?? {
       playerId: game.playerId, name: player.name, headshotUrl: player.headshotUrl, position: game.position, team: game.team, ecr: player.ecr,
+      injuryStatus: player.injuryStatus ?? null, injuryStatusSource: player.injuryStatusSource ?? null,
+      injuryDescription: player.injuryDescription ?? null, injuryWeek: player.injuryWeek ?? null,
       games: 0, possessions: 0, teamPlays: 0, snaps: 0,
       passingAttempts: 0, completions: 0, passingYards: 0, passingTouchdowns: 0, interceptions: 0, sacks: 0,
       carries: 0, targets: 0,

@@ -21,6 +21,10 @@
           "headshotUrl": { "type": ["string", "null"] },
           "ecr": { "type": ["number", "null"], "exclusiveMinimum": 0 },
           "ecrUpdatedAt": { "type": ["string", "null"], "format": "date" },
+          "injuryStatus": { "type": ["string", "null"], "minLength": 1 },
+          "injuryStatusSource": { "enum": ["game", "practice", null] },
+          "injuryDescription": { "type": ["string", "null"], "minLength": 1 },
+          "injuryWeek": { "type": ["integer", "null"], "minimum": 1, "maximum": 25 },
           "sourceIds": {
             "type": "object",
             "additionalProperties": false,

@@ -24,6 +24,7 @@ SCHEMA_VERSION = "1.4.0"
 URLS = {
     "players": "https://github.com/nflverse/nflverse-data/releases/download/players/players.parquet",
     "schedules": "https://github.com/nflverse/nflverse-data/releases/download/schedules/games.parquet",
+    "injuries": f"https://github.com/nflverse/nflverse-data/releases/download/injuries/injuries_{SEASON}.parquet",
 }
 for season in SEASONS:
     URLS.update({
@@ -109,6 +110,7 @@ def main() -> None:
     snaps = pd.concat([pd.read_parquet(paths[f"snaps_{season}"]) for season in SEASONS], ignore_index=True)
     people = pd.read_parquet(paths["players"])
     schedules = pd.read_parquet(paths["schedules"])
+    injuries = pd.read_parquet(paths["injuries"])
     rankings = pd.read_csv(csv_paths["ecr"])
     fantasy_ids = pd.read_csv(csv_paths["playerids"], low_memory=False)
     team_stats = pd.concat(
@@ -198,6 +200,50 @@ def main() -> None:
     rankings = rankings.sort_values("scrape_date").drop_duplicates("gsis_id", keep="last")
     ecr_by_gsis = rankings.set_index("gsis_id")["ecr"].to_dict()
     ecr_date_by_gsis = rankings.set_index("gsis_id")["scrape_date"].astype(str).to_dict()
+
+    # Only the newest league injury-report week is current. Official game
+    # designations take precedence; before they exist, retain only practice
+    # limitations that affect availability and omit full-participation noise.
+    injuries = injuries[
+        (injuries["season"] == SEASON)
+        & (injuries["season_type"] == "REG")
+        & (injuries["position"].isin(["WR", "TE", "RB", "QB"]))
+        & injuries["gsis_id"].notna()
+    ].copy()
+    injury_week = None if injuries.empty else int(injuries["week"].max())
+    if injury_week is not None:
+        injuries = injuries[injuries["week"] == injury_week].drop_duplicates("gsis_id", keep="last")
+
+    def current_injury(row: object) -> dict | None:
+        report_status = as_text(row.report_status)
+        practice_status = as_text(row.practice_status)
+        if report_status:
+            status = report_status
+            source = "game"
+            primary = as_text(row.report_primary_injury)
+            secondary = as_text(row.report_secondary_injury)
+        elif practice_status in {"Did Not Participate In Practice", "Limited Participation in Practice"}:
+            status = practice_status
+            source = "practice"
+            primary = as_text(row.practice_primary_injury)
+            secondary = as_text(row.practice_secondary_injury)
+            practice_injuries = list(filter(None, [primary, secondary]))
+            if practice_injuries and all(injury.lower().startswith("not injury related") for injury in practice_injuries):
+                return None
+        else:
+            return None
+        return {
+            "injuryStatus": status,
+            "injuryStatusSource": source,
+            "injuryDescription": " / ".join(filter(None, [primary, secondary])) or None,
+            "injuryWeek": injury_week,
+        }
+
+    injuries_by_gsis = {
+        str(row.gsis_id): injury
+        for row in injuries.itertuples(index=False)
+        if (injury := current_injury(row)) is not None
+    }
 
     id_map = people[["gsis_id", "pfr_id"]].dropna(subset=["gsis_id"]).drop_duplicates("pfr_id")
     snaps = snaps.merge(id_map, left_on="pfr_player_id", right_on="pfr_id", how="left")
@@ -319,6 +365,7 @@ def main() -> None:
     for player_id in sorted(used_ids):
         stat = latest_stats.loc[player_id]
         person = people_by_gsis.loc[player_id] if player_id in people_by_gsis.index else None
+        injury = injuries_by_gsis.get(player_id)
         player_records.append(
             {
                 "playerId": player_id,
@@ -328,6 +375,10 @@ def main() -> None:
                 "headshotUrl": as_text(stat["headshot_url"]),
                 "ecr": None if player_id not in ecr_by_gsis else round(float(ecr_by_gsis[player_id]), 2),
                 "ecrUpdatedAt": ecr_date_by_gsis.get(player_id),
+                "injuryStatus": None if injury is None else injury["injuryStatus"],
+                "injuryStatusSource": None if injury is None else injury["injuryStatusSource"],
+                "injuryDescription": None if injury is None else injury["injuryDescription"],
+                "injuryWeek": None if injury is None else injury["injuryWeek"],
                 "sourceIds": {
                     "gsis": player_id,
                     "pfr": None if person is None else as_text(person["pfr_id"]),
@@ -379,6 +430,7 @@ def main() -> None:
             "offensivePossessions": "Distinct nflverse play-by-play drive identifiers with a recorded possession team.",
             "offensivePlays": "Median team snap total reconstructed from player offense_snaps / offense_pct, rounded to a whole play.",
             "ecr": "Current FantasyPros redraft-overall expert consensus rank distributed by DynastyProcess through nflverse; null means the player is not currently ranked.",
+            "injuryStatus": "Newest available regular-season nflverse injury-report week. Official game status takes precedence; otherwise only Did Not Participate or Limited Participation practice status is retained.",
             "nullSemantics": "null means unknown or unavailable; 0 means a verified zero",
         },
     }
