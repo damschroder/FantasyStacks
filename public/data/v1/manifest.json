@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.4.0",
-  "generatedAt": "2026-10-06T13:11:20.667004Z",
+  "generatedAt": "2026-10-07T14:01:00.506313Z",
   "season": 2026,
   "seasons": [
     2025,
@@ -34,7 +34,7 @@
     "players": {
       "path": "/data/v1/players.json",
       "records": 678,
-      "sha256": "080d21cf68d702beaafc0cbb4ade4bef0ce1bbe2da69d51e9c248b938d9a4424"
+      "sha256": "49faeae44148ff3704a1d07e3eee603f4968fd9bf840fafe49fb3cad8b3c1a53"
     },
     "playerGames": {
       "path": "/data/v1/player-games.json",
